@@ -130,6 +130,5 @@ func startChatSession() {
 
 		// Add a separator between exchanges
 		color.New(color.Faint).Println("")
-
 	}
 }

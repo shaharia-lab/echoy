@@ -11,10 +11,10 @@ import (
 
 const (
 	// MaxLogRetentionDays defines how long to keep logs (15 days)
-	MaxLogRetentionDays = 15
+	MaxLogRetentionDays = 3
 
 	// DefaultMaxSizeMB defines the default maximum size of a log file in megabytes before rotation
-	DefaultMaxSizeMB = 100
+	DefaultMaxSizeMB = 5
 )
 
 // LogLevel represents logging levels

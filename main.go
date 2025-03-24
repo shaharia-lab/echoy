@@ -30,16 +30,22 @@ func main() {
 	}
 
 	log, err := logger.NewLogger(logger.Config{
-		LogLevel:    logger.DebugLevel,
-		FilePath:    paths[filesystem.LogsDirectory],
-		MaxSizeMB:   0,
-		UseConsole:  false,
-		Development: false,
+		LogLevel:  logger.DebugLevel,
+		FilePath:  paths[filesystem.LogsFilePath],
+		MaxSizeMB: 1,
 	})
 	if err != nil {
-		fmt.Println(fmt.Errorf("failed to initialize logger: %w", err))
+		fmt.Printf("Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
+	defer log.Sync()
+
+	// Add some test logs
+	log.Info("Logger initialized successfully")
+	log.WithFields(map[string]interface{}{"command": "config preview"}).Debug("Running command")
+
+	// Force flush logs before any potential early exit
+	log.Sync() // Explicitly flush logs right after writing them
 
 	rootCmd := cmd.NewRootCmd(appCfg, log)
 	rootCmd.AddCommand(
@@ -51,6 +57,10 @@ func main() {
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
+		log.Sync()
 		os.Exit(1)
 	}
+
+	log.Info("Command execution completed")
+	log.Sync()
 }

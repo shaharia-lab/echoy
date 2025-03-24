@@ -22,6 +22,7 @@ const (
 	ConfigDirectory PathType = "config"
 	ConfigFilePath  PathType = "config_file"
 	LogsDirectory   PathType = "logs"
+	LogsFilePath    PathType = "log_file"
 	DataDirectory   PathType = "data"
 	ChatHistoryDB   PathType = "chat_history_db"
 )
@@ -102,12 +103,13 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	paths[ConfigFilePath] = configFilePath
 
 	// create one empty log file under logs directory
-	logFilePath := filepath.Join(logsDir, "app.log")
+	logFilePath := filepath.Join(logsDir, fmt.Sprintf("%s.log", strings.ToLower(s.appCfg.Name)))
 	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(logFilePath); err != nil {
 			return paths, err
 		}
 	}
+	paths[LogsFilePath] = logFilePath
 
 	return paths, nil
 }
