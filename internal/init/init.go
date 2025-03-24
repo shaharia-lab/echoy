@@ -3,9 +3,9 @@ package init
 import (
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/shaharia-lab/echoy/internal/banner"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
 // Initializer handles the interactive setup process
@@ -45,7 +45,7 @@ func (i *Initializer) WithConfigManager(cm ConfigManager) *Initializer {
 
 // Run starts the interactive configuration process
 func (i *Initializer) Run() error {
-	banner.CLIBanner(i.appConfig).Display()
+	theme.DisplayBanner(i.appConfig)
 
 	var err error
 	i.IsUpdateMode = i.configManager.ConfigExists()
