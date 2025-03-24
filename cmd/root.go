@@ -28,10 +28,12 @@ func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 
 			if !config.ConfigExists() {
 				color.Yellow("Configuration not found. Please run 'echoy init' to set up.")
+				log.Error("Configuration not found. Please run 'echoy init' to set up.")
+				log.Sync()
 				os.Exit(1)
 			}
 		},
-		Run: func(c *cobra.Command, args []string) {
+		RunE: func(c *cobra.Command, args []string) error {
 			PrintColorfulBanner()
 			if config.ConfigExists() {
 				color.Green("Echoy is configured and ready to use!")
@@ -40,6 +42,8 @@ func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 				color.Yellow("Echoy needs to be configured.")
 				fmt.Println("\nType 'echoy init' to start the configuration wizard!")
 			}
+
+			return nil
 		},
 	}
 

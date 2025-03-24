@@ -39,6 +39,8 @@ func main() {
 	}
 	defer log.Sync()
 
+	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
+
 	// setup commands
 	rootCmd := cmd.NewRootCmd(appCfg, log)
 	rootCmd.AddCommand(
