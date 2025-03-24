@@ -22,17 +22,16 @@ func main() {
 		}),
 	)
 
-	fs := filesystem.NewAppFilesystem(appCfg)
-	paths, err := fs.EnsureAllPaths()
+	// setup filesystem
+	paths, err := filesystem.NewAppFilesystem(appCfg).EnsureAllPaths()
 	if err != nil {
 		fmt.Println(fmt.Errorf("failed to ensure all application paths: %w", err))
 		os.Exit(1)
 	}
 
+	// setup logger
 	log, err := logger.NewLogger(logger.Config{
-		LogLevel:  logger.DebugLevel,
-		FilePath:  paths[filesystem.LogsFilePath],
-		MaxSizeMB: 1,
+		FilePath: paths[filesystem.LogsFilePath],
 	})
 	if err != nil {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
@@ -40,13 +39,7 @@ func main() {
 	}
 	defer log.Sync()
 
-	// Add some test logs
-	log.Info("Logger initialized successfully")
-	log.WithFields(map[string]interface{}{"command": "config preview"}).Debug("Running command")
-
-	// Force flush logs before any potential early exit
-	log.Sync() // Explicitly flush logs right after writing them
-
+	// setup commands
 	rootCmd := cmd.NewRootCmd(appCfg, log)
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(appCfg, log),
@@ -55,12 +48,13 @@ func main() {
 		cmd.NewUpdateCmd(appCfg, log),
 	)
 
+	// execute the command
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		log.Sync()
 		os.Exit(1)
 	}
 
-	log.Info("Command execution completed")
+	log.Infof(fmt.Sprintf("%s exited successfully", appCfg.Name))
 	log.Sync()
 }
