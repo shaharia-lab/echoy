@@ -3,7 +3,9 @@ package init
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/shaharia-lab/echoy/internal/banner"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/logger"
 )
 
 // Initializer handles the interactive setup process
@@ -12,6 +14,8 @@ type Initializer struct {
 	IsUpdateMode bool
 	// Dependencies can be injected here for testing
 	configManager ConfigManager
+	log           *logger.Logger
+	appConfig     *config.AppConfig
 }
 
 // ConfigManager interface for loading/saving configuration
@@ -25,8 +29,10 @@ type ConfigManager interface {
 type DefaultConfigManager struct{}
 
 // NewInitializer creates a new initializer with default dependencies
-func NewInitializer() *Initializer {
+func NewInitializer(log *logger.Logger, appCfg *config.AppConfig) *Initializer {
 	return &Initializer{
+		log:           log,
+		appConfig:     appCfg,
 		configManager: &DefaultConfigManager{},
 	}
 }
@@ -39,7 +45,7 @@ func (i *Initializer) WithConfigManager(cm ConfigManager) *Initializer {
 
 // Run starts the interactive configuration process
 func (i *Initializer) Run() error {
-	PrintColorfulBanner()
+	banner.CLIBanner(i.appConfig).Display()
 
 	var err error
 	i.IsUpdateMode = i.configManager.ConfigExists()
@@ -79,12 +85,4 @@ func (i *Initializer) Run() error {
 	}
 
 	return nil
-}
-
-// PrintColorfulBanner prints the application banner
-func PrintColorfulBanner() {
-	// Implementation of your banner printing function
-	color.New(color.FgHiCyan, color.Bold).Println("╔════════════════════════════════════════╗")
-	color.New(color.FgHiCyan, color.Bold).Println("║		  Welcome to Echoy			    ║")
-	color.New(color.FgHiCyan, color.Bold).Println("╚════════════════════════════════════════╝")
 }

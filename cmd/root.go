@@ -3,10 +3,10 @@ package cmd
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/shaharia-lab/echoy/internal/banner"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // NewRootCmd creates and returns the root command
@@ -21,7 +21,7 @@ func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Skip check for init and help commands
+			/*// Skip check for init and help commands
 			if cmd.Name() == "init" || cmd.Name() == "help" {
 				return
 			}
@@ -31,9 +31,11 @@ func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 				log.Error("Configuration not found. Please run 'echoy init' to set up.")
 				log.Sync()
 				os.Exit(1)
-			}
+			}*/
 		},
 		RunE: func(c *cobra.Command, args []string) error {
+			banner.CLIBanner(appCfg).Display()
+
 			PrintColorfulBanner()
 			if config.ConfigExists() {
 				color.Green("Echoy is configured and ready to use!")
