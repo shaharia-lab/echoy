@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/cmd"
-	"github.com/shaharia-lab/echoy/internal/config"
-	"github.com/shaharia-lab/echoy/internal/filesystem"
-	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/cli"
 	"os"
 )
 
@@ -14,29 +12,18 @@ var commit = "none"
 var date = "unknown"
 
 func main() {
-	appCfg := config.NewDefaultConfig(
-		config.WithVersion(config.Version{
-			Version: version,
-			Commit:  commit,
-			Date:    date,
-		}),
-	)
-
-	// setup filesystem
-	paths, err := filesystem.NewAppFilesystem(appCfg).EnsureAllPaths()
-	if err != nil {
-		fmt.Println(fmt.Errorf("failed to ensure all application paths: %w", err))
+	// Initialize with build information
+	if err := cli.InitWithOptions(cli.InitOptions{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error during initialization: %v\n", err)
 		os.Exit(1)
 	}
 
-	// setup logger
-	log, err := logger.NewLogger(logger.Config{
-		FilePath: paths[filesystem.LogsFilePath],
-	})
-	if err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
-		os.Exit(1)
-	}
+	appCfg := cli.GetAppConfig()
+	log := cli.GetLogger()
 	defer log.Sync()
 
 	log.Infof(fmt.Sprintf("%s started", appCfg.Name))

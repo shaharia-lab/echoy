@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
@@ -22,7 +21,6 @@ func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			cli.Init()
 			/*// Skip check for init and help commands
 			if cmd.Name() == "init" || cmd.Name() == "help" {
 				return
