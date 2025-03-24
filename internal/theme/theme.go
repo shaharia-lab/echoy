@@ -4,6 +4,15 @@ import (
 	"github.com/fatih/color"
 )
 
+type Name string
+
+const (
+	Default      Name = "default"
+	Professional Name = "professional"
+	ModernDark   Name = "modern-dark"
+	Corporate    Name = "corporate"
+)
+
 // Style represents a named color style
 type Style struct {
 	fg      color.Attribute

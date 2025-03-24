@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/cmd"
 	"github.com/shaharia-lab/echoy/internal/cli"
+	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
 )
 
@@ -12,11 +14,13 @@ var commit = "none"
 var date = "unknown"
 
 func main() {
-	// Initialize with build information
+	// Initialize with configurable options
 	if err := cli.InitWithOptions(cli.InitOptions{
-		Version: version,
-		Commit:  commit,
-		Date:    date,
+		Version:  version,
+		Commit:   commit,
+		Date:     date,
+		LogLevel: logger.DebugLevel,
+		Theme:    theme.Professional,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error during initialization: %v\n", err)
 		os.Exit(1)
@@ -29,12 +33,12 @@ func main() {
 	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd(appCfg, log)
+	rootCmd := cmd.NewRootCmd()
 	rootCmd.AddCommand(
-		cmd.NewInitCmd(appCfg, log),
+		cmd.NewInitCmd(),
 		cmd.NewConfigCmd(appCfg, log),
 		cmd.NewChatCmd(appCfg, log),
-		cmd.NewUpdateCmd(appCfg, log),
+		cmd.NewUpdateCmd(),
 	)
 
 	// execute the command

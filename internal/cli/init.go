@@ -33,6 +33,7 @@ type InitOptions struct {
 	Commit   string
 	Date     string
 	LogLevel logger.LogLevel
+	Theme    theme.Name
 }
 
 // InitWithOptions initializes all CLI components with the given options
@@ -58,7 +59,7 @@ func InitWithOptions(opts InitOptions) error {
 		}
 
 		// Initialize theme
-		initTheme()
+		initTheme(opts)
 
 		// Mark as initialized
 		initialized = true
@@ -70,13 +71,18 @@ func InitWithOptions(opts InitOptions) error {
 // initConfig creates and configures the application config
 func initConfig(opts InitOptions) error {
 	// Create default config with version info
-	appConfig = config.NewDefaultConfig(
-		config.WithVersion(config.Version{
+	appConfig = &config.AppConfig{
+		Name: "Echoy",
+		Repository: config.Repository{
+			Owner: "shaharia-lab",
+			Repo:  "echoy",
+		},
+		Version: config.Version{
 			Version: opts.Version,
 			Commit:  opts.Commit,
 			Date:    opts.Date,
-		}),
-	)
+		},
+	}
 
 	return nil
 }
@@ -113,6 +119,10 @@ func initLogger(opts InitOptions) error {
 }
 
 // initTheme sets up the theme system with professional defaults
-func initTheme() {
-	theme.SetTheme(theme.NewProfessionalTheme())
+func initTheme(opts InitOptions) {
+	if opts.Theme == "" {
+		opts.Theme = theme.Professional
+	}
+
+	theme.SetThemeByName(opts.Theme)
 }

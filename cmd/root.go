@@ -3,14 +3,16 @@ package cmd
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
-	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 )
 
 // NewRootCmd creates and returns the root command
-func NewRootCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
+func NewRootCmd() *cobra.Command {
+	appCfg := cli.GetAppConfig()
+
 	rootCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "echoy",

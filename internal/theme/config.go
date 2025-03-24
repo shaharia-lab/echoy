@@ -24,3 +24,22 @@ func GetTheme() Theme {
 func SetTheme(theme Theme) {
 	defaultTheme = theme
 }
+
+func SetThemeByName(name Name) {
+	var theme Theme
+
+	switch name {
+	case Default:
+		theme = NewDefaultTheme()
+	case Professional:
+		theme = NewProfessionalTheme()
+	case ModernDark:
+		theme = NewModernDarkTheme()
+	case Corporate:
+		theme = NewCorporateTheme()
+	default:
+		theme = NewProfessionalTheme()
+	}
+
+	SetTheme(theme)
+}
