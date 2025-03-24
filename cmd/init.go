@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	initPkg "github.com/shaharia-lab/echoy/internal/init"
 	"github.com/spf13/cobra"
@@ -11,6 +10,7 @@ import (
 // NewInitCmd creates an interactive init command
 func NewInitCmd() *cobra.Command {
 	appCfg := cli.GetAppConfig()
+	cliTheme := cli.GetTheme()
 
 	cmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
@@ -21,11 +21,12 @@ func NewInitCmd() *cobra.Command {
 			log := cli.GetLogger()
 			initializer := initPkg.NewInitializer(log, appCfg)
 			if err := initializer.Run(); err != nil {
-				log.Error(fmt.Sprintf("Initialization failed: %v", err))
+				cliTheme.Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
 
-			color.Green("Echoy has been successfully configured!")
+			cliTheme.Success().Println(fmt.Sprintf("%s has been successfully configured!", appCfg.Name))
+			cliTheme.Info().Println("Run 'echoy help' to see the available commands.")
 			return nil
 		},
 	}
