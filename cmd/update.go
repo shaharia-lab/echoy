@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"os"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // NewUpdateCmd creates a new update command
-func NewUpdateCmd(appCfg *config.AppConfig) *cobra.Command {
+func NewUpdateCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "update",

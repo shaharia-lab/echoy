@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 // NewConfigCmd creates a config command
-func NewConfigCmd(appCfg *config.AppConfig) *cobra.Command {
+func NewConfigCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 	cfgCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "config",

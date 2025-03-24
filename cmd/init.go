@@ -4,12 +4,13 @@ import (
 	"github.com/fatih/color"
 	"github.com/shaharia-lab/echoy/internal/config"
 	initPkg "github.com/shaharia-lab/echoy/internal/init"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 // NewInitCmd creates an interactive init command
-func NewInitCmd(appCfg *config.AppConfig) *cobra.Command {
+func NewInitCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "init",
