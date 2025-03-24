@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
-	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
 	"strings"
 
@@ -22,7 +21,6 @@ func NewUpdateCmd() *cobra.Command {
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			theme.DisplayBanner(appCfg)
 			return runUpdate(appCfg.Repository, appCfg.Version.Version)
 		},
 	}

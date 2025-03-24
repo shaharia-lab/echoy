@@ -43,8 +43,8 @@ func main() {
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		log.Error(fmt.Sprintf("%s exited with error: %v", appCfg.Name, err))
+		cli.GetTheme().Error().Println(err)
+		//log.Error(fmt.Sprintf("%v", err))
 		log.Sync()
 		os.Exit(1)
 	}
