@@ -6,9 +6,11 @@ import (
 
 // ConfigureUser configures user information
 func (i *Initializer) ConfigureUser() error {
+	i.cliTheme.Primary().Println("\n📝 Your Information")
+
 	var userName string
 	promptUserName := &survey.Input{
-		Message: "Your name (optional):",
+		Message: "Name (optional):",
 		Help:    "Your name will be used in conversations",
 		Default: i.Config.User.Name,
 	}
@@ -16,7 +18,11 @@ func (i *Initializer) ConfigureUser() error {
 	if err != nil {
 		return err
 	}
-	i.Config.User.Name = userName
 
+	if userName == "" {
+		userName = "User"
+	}
+
+	i.Config.User.Name = userName
 	return nil
 }

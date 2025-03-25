@@ -7,7 +7,7 @@ import (
 
 // ConfigureAssistant configures assistant details
 func (i *Initializer) ConfigureAssistant() error {
-	i.cliTheme.Info().Println("📝 Assistant Details")
+	i.cliTheme.Primary().Println("📝 Assistant Details")
 
 	var assistantName string
 	promptAssistantName := &survey.Input{

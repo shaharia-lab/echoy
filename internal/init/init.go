@@ -75,8 +75,12 @@ func (i *Initializer) Run() error {
 		return err
 	}
 
-	i.ConfigureUser()
-	i.ConfigureTools()
+	err = i.ConfigureUser()
+	if err != nil {
+		i.log.Error(fmt.Sprintf("error configuring user: %v", err))
+		return err
+	}
+
 	i.ConfigureLLM()
 
 	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))
