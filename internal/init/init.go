@@ -72,16 +72,20 @@ func (i *Initializer) Run() error {
 	err = i.ConfigureAssistant()
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring assistant: %v", err))
-		return err
+		return fmt.Errorf("error configuring assistant: %v", err)
 	}
 
 	err = i.ConfigureUser()
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring user: %v", err))
-		return err
+		return fmt.Errorf("error configuring user: %v", err)
 	}
 
-	i.ConfigureLLM()
+	err = i.ConfigureLLM()
+	if err != nil {
+		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
+		return fmt.Errorf("error configuring LLM: %v", err)
+	}
 
 	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))
 	if err := i.configManager.SaveConfig(i.Config); err != nil {
@@ -90,11 +94,7 @@ func (i *Initializer) Run() error {
 	}
 
 	i.log.Debug("Configuration process complete")
-	if i.IsUpdateMode {
-		i.cliTheme.Success().Println("\n✅ Configuration updated successfully!")
-		return nil
-	}
-
-	i.cliTheme.Success().Println("\n✅ Echoy configured successfully!")
+	i.cliTheme.Success().Println("\n✅ Configuration updated successfully!")
+	i.cliTheme.Info().Println("Run 'echoy chat' to start an interactive chat session.")
 	return nil
 }

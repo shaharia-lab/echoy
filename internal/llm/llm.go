@@ -1,8 +1,12 @@
 // Package llm contains the definition of the LLMProvider struct and the GetSupportedLLMProviders function.
 package llm
 
-// LLMProvider represents a provider of large language models
-type LLMProvider struct {
+import (
+	"github.com/anthropics/anthropic-sdk-go"
+)
+
+// Provider represents a provider of large language models
+type Provider struct {
 	ID          string
 	Name        string
 	Description string
@@ -10,13 +14,18 @@ type LLMProvider struct {
 }
 
 // GetSupportedLLMProviders returns the list of supported LLM providers
-func GetSupportedLLMProviders() []LLMProvider {
-	return []LLMProvider{
+func GetSupportedLLMProviders() []Provider {
+	return []Provider{
 		{
 			ID:          "anthropic",
 			Name:        "Anthropic",
 			Description: "One of the leading AI/ML model providers",
-			ModelIDs:    []string{"claude-2"},
+			ModelIDs: []string{
+				anthropic.ModelClaude3OpusLatest,
+				anthropic.ModelClaude3_7SonnetLatest,
+				anthropic.ModelClaude3_5HaikuLatest,
+				anthropic.ModelClaude3_5SonnetLatest,
+			},
 		},
 	}
 }
