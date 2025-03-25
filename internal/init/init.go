@@ -69,7 +69,12 @@ func (i *Initializer) Run() error {
 
 	fmt.Println()
 
-	i.ConfigureAssistant()
+	err = i.ConfigureAssistant()
+	if err != nil {
+		i.log.Error(fmt.Sprintf("error configuring assistant: %v", err))
+		return err
+	}
+
 	i.ConfigureUser()
 	i.ConfigureTools()
 	i.ConfigureLLM()

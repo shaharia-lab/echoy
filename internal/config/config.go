@@ -13,8 +13,7 @@ type AssistantConfig struct {
 
 // UserConfig represents the user information
 type UserConfig struct {
-	Name  string `yaml:"name,omitempty"`
-	Email string `yaml:"email,omitempty"`
+	Name string `yaml:"name,omitempty"`
 }
 
 // DockerConfig represents Docker tool configuration

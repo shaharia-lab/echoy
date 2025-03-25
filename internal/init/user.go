@@ -5,22 +5,18 @@ import (
 )
 
 // ConfigureUser configures user information
-func (i *Initializer) ConfigureUser() {
+func (i *Initializer) ConfigureUser() error {
 	var userName string
 	promptUserName := &survey.Input{
-		Message: "What's your name (optional):",
+		Message: "Your name (optional):",
 		Help:    "Your name will be used in conversations",
 		Default: i.Config.User.Name,
 	}
-	survey.AskOne(promptUserName, &userName)
+	err := survey.AskOne(promptUserName, &userName)
+	if err != nil {
+		return err
+	}
 	i.Config.User.Name = userName
 
-	var userEmail string
-	promptUserEmail := &survey.Input{
-		Message: "Your email address (optional):",
-		Help:    "Your email may be used for notifications",
-		Default: i.Config.User.Email,
-	}
-	survey.AskOne(promptUserEmail, &userEmail)
-	i.Config.User.Email = userEmail
+	return nil
 }
