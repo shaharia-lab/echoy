@@ -2,14 +2,18 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/fatih/color"
+	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // NewRootCmd creates and returns the root command
-func NewRootCmd(appCfg *config.AppConfig) *cobra.Command {
+func NewRootCmd() *cobra.Command {
+	appCfg := cli.GetAppConfig()
+	log := cli.GetLogger()
+	cliTheme := cli.GetTheme()
+
 	rootCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "echoy",
@@ -20,25 +24,28 @@ func NewRootCmd(appCfg *config.AppConfig) *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			theme.DisplayBanner(appCfg)
+
 			// Skip check for init and help commands
 			if cmd.Name() == "init" || cmd.Name() == "help" {
 				return
 			}
 
 			if !config.ConfigExists() {
-				color.Yellow("Configuration not found. Please run 'echoy init' to set up.")
-				os.Exit(1)
+				cliTheme.Error().Println("Configuration not found. Please run 'echoy init' to set up.")
+				log.Error("Configuration not found. Please run 'echoy init' to set up.")
+				log.Sync()
 			}
+
+			return
 		},
-		Run: func(c *cobra.Command, args []string) {
-			PrintColorfulBanner()
+		RunE: func(c *cobra.Command, args []string) error {
 			if config.ConfigExists() {
-				color.Green("Echoy is configured and ready to use!")
-				fmt.Println("\nType 'echoy help' to see available commands.")
-			} else {
-				color.Yellow("Echoy needs to be configured.")
-				fmt.Println("\nType 'echoy init' to start the configuration wizard!")
+				cliTheme.Info().Println(fmt.Sprintf("%s is configured and ready to use!", appCfg.Name))
+				return nil
 			}
+
+			return nil
 		},
 	}
 

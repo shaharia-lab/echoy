@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"os"
 	"strings"
@@ -11,30 +12,40 @@ import (
 )
 
 // NewUpdateCmd creates a new update command
-func NewUpdateCmd(appCfg *config.AppConfig) *cobra.Command {
+func NewUpdateCmd() *cobra.Command {
+	appCfg := cli.GetAppConfig()
+
 	updateCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "update",
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUpdate(appCfg.Version.Version)
+			return runUpdate(appCfg.Repository, appCfg.Version.Version)
 		},
 	}
 
 	return updateCmd
 }
 
-func runUpdate(currentAppVersion string) error {
-	// Set the GitHub repository
-	repoSlug := "shaharia-lab/echoy"
-
-	fmt.Println("Checking for updates...")
+func runUpdate(repository config.Repository, currentAppVersion string) error {
+	cli.GetTheme().Info().Println(
+		fmt.Sprintf("Checking for updates for %s/%s... [Current version: %s]",
+			repository.Owner,
+			repository.Repo,
+			currentAppVersion,
+		),
+	)
 
 	// Check for the latest version
-	latest, found, err := selfupdate.DetectLatest(repoSlug)
+	latest, found, err := selfupdate.DetectLatest(fmt.Sprintf("%s/%s", repository.Owner, repository.Repo))
 	if err != nil {
 		return fmt.Errorf("error detecting version: %s", err)
+	}
+
+	if latest == nil {
+		cli.GetTheme().Warning().Println("No updates found")
+		return nil
 	}
 
 	// Remove 'v' prefix for comparison if needed
