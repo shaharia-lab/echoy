@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/cmd"
+	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
@@ -37,7 +38,7 @@ func main() {
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(),
 		cmd.NewConfigCmd(appCfg, log),
-		cmd.NewChatCmd(appCfg, log),
+		chat.NewChatCmd(appCfg, log),
 		cmd.NewUpdateCmd(),
 	)
 
