@@ -2,9 +2,9 @@ package init
 
 import (
 	"fmt"
-	"github.com/fatih/color"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
 // Initializer handles the interactive setup process
@@ -15,6 +15,7 @@ type Initializer struct {
 	configManager ConfigManager
 	log           *logger.Logger
 	appConfig     *config.AppConfig
+	cliTheme      theme.Theme
 }
 
 // ConfigManager interface for loading/saving configuration
@@ -28,11 +29,12 @@ type ConfigManager interface {
 type DefaultConfigManager struct{}
 
 // NewInitializer creates a new initializer with default dependencies
-func NewInitializer(log *logger.Logger, appCfg *config.AppConfig) *Initializer {
+func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme theme.Theme) *Initializer {
 	return &Initializer{
 		log:           log,
 		appConfig:     appCfg,
 		configManager: &DefaultConfigManager{},
+		cliTheme:      theme,
 	}
 }
 
@@ -44,42 +46,46 @@ func (i *Initializer) WithConfigManager(cm ConfigManager) *Initializer {
 
 // Run starts the interactive configuration process
 func (i *Initializer) Run() error {
+	i.log.Debug("Starting configuration process")
+
 	var err error
 	i.IsUpdateMode = i.configManager.ConfigExists()
+	i.log.Debug(fmt.Sprintf("Update mode: %v", i.IsUpdateMode))
+
 	if i.IsUpdateMode {
-		// Load existing config
 		i.Config, err = i.configManager.LoadConfig()
 		if err != nil {
+			i.log.Error(fmt.Sprintf("error loading configuration: %v", err))
 			return fmt.Errorf("error loading configuration: %v", err)
 		}
 
-		color.New(color.FgHiMagenta, color.Bold).Println("🔄 Configuration Update Mode")
-		color.New(color.FgHiWhite).Println("Existing configuration detected. Press Enter to keep current values, or provide new ones.")
+		i.cliTheme.Primary().Println("🔄 Configuration Update Mode")
+		i.cliTheme.Warning().Println("You are about to update your existing configuration. Press Enter to keep current values, or provide new ones.")
 	} else {
-		i.Config = config.Config{} // Initialize with default values
-		color.New(color.FgHiMagenta, color.Bold).Println("🔧 Initial Configuration")
-		color.New(color.FgHiWhite).Println("Please configure your assistant for the first time. You can always change the configuration later.")
+		i.Config = config.Config{}
+		i.cliTheme.Primary().Println("🔧 Initial Configuration")
+		i.cliTheme.Info().Println("Please configure your assistant for the first time. You can always change the configuration later.")
 	}
 
 	fmt.Println()
 
-	// Configure different sections
 	i.ConfigureAssistant()
 	i.ConfigureUser()
 	i.ConfigureTools()
 	i.ConfigureLLM()
 
-	// Save the configuration
+	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))
 	if err := i.configManager.SaveConfig(i.Config); err != nil {
+		i.log.Error(fmt.Sprintf("error saving configuration: %v", err))
 		return fmt.Errorf("error saving configuration: %v", err)
 	}
 
-	// Display completion message
+	i.log.Debug("Configuration process complete")
 	if i.IsUpdateMode {
-		color.New(color.FgGreen, color.Bold).Println("\n✅ Configuration updated successfully!")
-	} else {
-		color.New(color.FgGreen, color.Bold).Println("\n✅ Echoy configured successfully!")
+		i.cliTheme.Success().Println("\n✅ Configuration updated successfully!")
+		return nil
 	}
 
+	i.cliTheme.Success().Println("\n✅ Echoy configured successfully!")
 	return nil
 }

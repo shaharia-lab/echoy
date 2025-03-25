@@ -19,13 +19,12 @@ func NewInitCmd() *cobra.Command {
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log := cli.GetLogger()
-			initializer := initPkg.NewInitializer(log, appCfg)
+			initializer := initPkg.NewInitializer(log, appCfg, cliTheme)
 			if err := initializer.Run(); err != nil {
 				cliTheme.Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
 
-			cliTheme.Success().Println(fmt.Sprintf("%s has been successfully configured!", appCfg.Name))
 			cliTheme.Info().Println("Run 'echoy help' to see the available commands.")
 			return nil
 		},
