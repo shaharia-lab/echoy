@@ -23,7 +23,7 @@ type InitOptions struct {
 	Commit   string
 	Date     string
 	LogLevel logger.LogLevel
-	Theme    theme.Name
+	Theme    theme.Theme
 }
 
 // NewContainer creates and initializes all application dependencies
@@ -31,30 +31,27 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	container := &Container{}
 	var err error
 
-	// Initialize config
-	if err = initConfig(container, opts); err != nil {
-		return nil, fmt.Errorf("failed to initialize config: %w", err)
+	if opts.Version == "" {
+		return nil, fmt.Errorf("version is required")
 	}
 
-	// Initialize filesystem
-	if err = initFilesystem(container); err != nil {
-		return nil, fmt.Errorf("failed to initialize filesystem: %w", err)
+	if opts.Commit == "" {
+		return nil, fmt.Errorf("commit is required")
 	}
 
-	// Initialize logger
-	if err = initLogger(container, opts); err != nil {
-		return nil, fmt.Errorf("failed to initialize logger: %w", err)
+	if opts.Date == "" {
+		return nil, fmt.Errorf("date is required")
 	}
 
-	// Initialize theme
-	initTheme(container, opts)
+	if opts.LogLevel == "" {
+		return nil, fmt.Errorf("log level is required")
+	}
 
-	return container, nil
-}
+	if opts.Theme == nil {
+		return nil, fmt.Errorf("theme is required")
+	}
 
-// initConfig creates and configures the application config
-func initConfig(c *Container, opts InitOptions) error {
-	c.Config = &config.AppConfig{
+	container.Config = &config.AppConfig{
 		Name: "Echoy",
 		Repository: config.Repository{
 			Owner: "shaharia-lab",
@@ -67,50 +64,30 @@ func initConfig(c *Container, opts InitOptions) error {
 		},
 	}
 
-	return nil
-}
+	container.ThemeMgr = theme.NewManager(opts.Theme)
 
-// initFilesystem sets up the filesystem
-func initFilesystem(c *Container) error {
-	c.Filesystem = filesystem.NewAppFilesystem(c.Config)
+	container.Filesystem = filesystem.NewAppFilesystem(container.Config)
 
-	var err error
-	c.Paths, err = c.Filesystem.EnsureAllPaths()
+	container.Paths, err = container.Filesystem.EnsureAllPaths()
 	if err != nil {
-		return fmt.Errorf("failed to ensure all application paths: %w", err)
+		return nil, fmt.Errorf("failed to ensure all application paths: %w", err)
 	}
 
-	return nil
-}
+	if container.Paths[filesystem.ConfigFilePath] == "" {
+		return nil, fmt.Errorf("config file path is required")
+	}
 
-// initLogger sets up the application logger
-func initLogger(c *Container, opts InitOptions) error {
-	// Configure and create the logger
 	loggerConfig := logger.Config{
-		FilePath: c.Paths[filesystem.LogsFilePath],
+		FilePath: container.Paths[filesystem.LogsFilePath],
 		LogLevel: opts.LogLevel,
 	}
 
-	var err error
-	c.Logger, err = logger.NewLogger(loggerConfig)
+	container.Logger, err = logger.NewLogger(loggerConfig)
 	if err != nil {
-		return fmt.Errorf("failed to initialize logger: %w", err)
+		return nil, fmt.Errorf("failed to initialize logger: %w", err)
 	}
 
-	// Log initialization success
-	c.Logger.Info("Logger initialized successfully")
+	container.Logger.Info("Logger initialized successfully")
 
-	return nil
-}
-
-// initTheme sets up the theme system with professional defaults
-func initTheme(c *Container, opts InitOptions) {
-	c.ThemeMgr = theme.NewManager()
-
-	themeName := opts.Theme
-	if themeName == "" {
-		themeName = theme.Professional
-	}
-
-	c.ThemeMgr.SetThemeByName(themeName)
+	return container, nil
 }

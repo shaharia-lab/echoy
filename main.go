@@ -20,7 +20,7 @@ func main() {
 		Commit:   commit,
 		Date:     date,
 		LogLevel: logger.InfoLevel,
-		Theme:    theme.Professional,
+		Theme:    theme.NewProfessionalTheme(),
 	})
 
 	if err != nil {
