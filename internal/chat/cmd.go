@@ -36,14 +36,14 @@ func startChatSession() error {
 		return fmt.Errorf("error loading configuration: %w", err)
 	}
 
-	chatHistoryStorage := goai.NewInMemoryChatHistoryStorage()
-
-	chatService, err := NewChatService(cfg.LLM, chatHistoryStorage)
+	llmService, err := NewLLMService(cfg.LLM)
 	if err != nil {
-		return fmt.Errorf("error initializing chat service: %w", err)
+		return fmt.Errorf("error initializing LLM service: %w", err)
 	}
 
-	session, err := NewChatSession(&cfg, cliTheme, chatService, chatHistoryStorage)
+	historyService := goai.NewInMemoryChatHistoryStorage()
+	chatService := NewChatService(llmService, historyService)
+	session, err := NewChatSession(&cfg, cliTheme, chatService, historyService)
 	if err != nil {
 		return fmt.Errorf("error creating chat session: %w", err)
 	}

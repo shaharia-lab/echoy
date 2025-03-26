@@ -18,22 +18,18 @@ import (
 type Session struct {
 	config             *config.Config
 	theme              theme.Theme
-	chatService        *Service
+	chatService        ChatService
 	chatHistoryStorage goai.ChatHistoryStorage
 	sessionID          uuid.UUID
 	reader             *bufio.Reader
+	chatHistoryService ChatHistoryService
 }
 
 // NewChatSession creates and configures a new chat session
-func NewChatSession(
-	config *config.Config,
-	theme theme.Theme,
-	chatService *Service,
-	chatHistoryStorage goai.ChatHistoryStorage,
-) (*Session, error) {
+func NewChatSession(config *config.Config, theme theme.Theme, chatService ChatService, chatHistoryService ChatHistoryService) (*Session, error) {
 	ctx := context.Background()
 
-	sessionID, err := chatHistoryStorage.CreateChat(ctx)
+	sessionID, err := chatHistoryService.CreateChat(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error creating chat session: %w", err)
 	}
@@ -42,7 +38,7 @@ func NewChatSession(
 		config:             config,
 		theme:              theme,
 		chatService:        chatService,
-		chatHistoryStorage: chatHistoryStorage,
+		chatHistoryService: chatHistoryService,
 		sessionID:          sessionID.UUID,
 		reader:             bufio.NewReader(os.Stdin),
 	}, nil
