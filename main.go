@@ -15,9 +15,9 @@ var date = "unknown"
 
 func main() {
 	container, err := cli.NewContainer(cli.InitOptions{
-		Version:  "1.0.0",
-		Commit:   "abc123",
-		Date:     "2023-11-01",
+		Version:  version,
+		Commit:   commit,
+		Date:     date,
 		LogLevel: logger.InfoLevel,
 	})
 
