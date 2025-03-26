@@ -3,6 +3,7 @@ package theme
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"log"
 	"strings"
 )
 
@@ -16,6 +17,8 @@ func banner(title string, width int, subtitle ...string) {
 	theme := GetTheme()
 	primary := theme.Primary()
 	secondary := theme.Secondary()
+
+	log.Printf("Banner using theme: %T at %p", theme, theme)
 
 	if width < len(title)+4 {
 		width = len(title) + 4

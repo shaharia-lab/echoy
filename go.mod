@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
+	github.com/anthropics/anthropic-sdk-go v0.2.0-alpha.13
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.24
@@ -11,13 +12,13 @@ require (
 	github.com/shaharia-lab/goai v0.12.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
+	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/anthropics/anthropic-sdk-go v0.2.0-alpha.13 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.32.8 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.27 // indirect
@@ -25,6 +26,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.23.2 // indirect
 	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf // indirect
@@ -36,6 +38,7 @@ require (
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/openai/openai-go v0.1.0-alpha.61 // indirect
 	github.com/pgvector/pgvector-go v0.2.2 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/tcnksm/go-gitconfig v0.1.2 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect

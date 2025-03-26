@@ -1,6 +1,7 @@
 package theme
 
 import (
+	"log"
 	"sync"
 )
 
@@ -12,11 +13,13 @@ var (
 // GetTheme returns the current theme instance
 func GetTheme() Theme {
 	once.Do(func() {
-		// If no theme has been set yet, create the default one
+		log.Printf("Inside once.Do - defaultTheme is %v at %p", defaultTheme == nil, defaultTheme)
 		if defaultTheme == nil {
 			defaultTheme = NewDefaultTheme()
+			log.Printf("Created new default theme at %p", defaultTheme)
 		}
 	})
+	log.Printf("GetTheme returning: %T at %p", defaultTheme, defaultTheme)
 	return defaultTheme
 }
 
@@ -42,4 +45,10 @@ func SetThemeByName(name Name) {
 	}
 
 	SetTheme(theme)
+}
+
+// ResetTheme resets the theme instance to nil
+func resetTheme() {
+	defaultTheme = nil
+	once = sync.Once{}
 }
