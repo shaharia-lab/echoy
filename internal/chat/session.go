@@ -79,15 +79,51 @@ func (s *ChatSession) showWelcomeMessage() {
 	s.theme.Info().Println("\n🗨️ Chat session started.")
 	s.theme.Subtle().Println("Session ID: ", s.sessionID)
 	s.theme.Secondary().Println("Type your message and press Enter. Type 'exit' to end the session.")
+	s.theme.Secondary().Println("For multi-line input: Type '/m' to start multi-line mode, then '/end' on a new line to submit.")
 }
 
 func (s *ChatSession) readUserInput() (string, error) {
 	s.theme.Primary().Print(fmt.Sprintf("%s > ", s.config.User.Name))
-	input, err := s.reader.ReadString('\n')
+
+	// Default to single-line mode
+	line, err := s.reader.ReadString('\n')
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(input), nil
+
+	trimmedLine := strings.TrimSpace(line)
+
+	// Check for multi-line mode trigger
+	if trimmedLine == "/m" {
+		return s.readMultiLineInput()
+	}
+
+	// Normal single-line input
+	return trimmedLine, nil
+}
+
+func (s *ChatSession) readMultiLineInput() (string, error) {
+	s.theme.Secondary().Println("Multi-line mode. Type '/end' on a new line to submit.")
+
+	var builder strings.Builder
+
+	for {
+		s.theme.Primary().Print("... ")
+		line, err := s.reader.ReadString('\n')
+		if err != nil {
+			return "", err
+		}
+
+		trimmedLine := strings.TrimSpace(line)
+
+		if trimmedLine == "/end" {
+			break
+		}
+
+		builder.WriteString(line)
+	}
+
+	return strings.TrimSpace(builder.String()), nil
 }
 
 func (s *ChatSession) processMessage(ctx context.Context, input string) error {
