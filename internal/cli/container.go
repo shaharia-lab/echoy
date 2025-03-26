@@ -64,7 +64,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 		},
 	}
 
-	container.ThemeMgr = theme.NewManager(opts.Theme)
+	container.ThemeMgr = theme.NewManager(opts.Theme, container.Config)
 
 	container.Filesystem = filesystem.NewAppFilesystem(container.Config)
 

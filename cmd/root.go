@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
-	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 )
 
@@ -20,9 +19,8 @@ func NewRootCmd(c *cli.Container) *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			theme.DisplayBanner(c.Config)
+			c.ThemeMgr.DisplayBanner(fmt.Sprintf("Welcome to %s", c.Config.Name), 40, "Your AI assistant for the CLI")
 
-			// Skip check for init and help commands
 			if cmd.Name() == "init" || cmd.Name() == "help" {
 				return
 			}
