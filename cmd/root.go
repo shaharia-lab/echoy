@@ -9,13 +9,9 @@ import (
 )
 
 // NewRootCmd creates and returns the root command
-func NewRootCmd() *cobra.Command {
-	appCfg := cli.GetAppConfig()
-	log := cli.GetLogger()
-	cliTheme := cli.GetTheme()
-
+func NewRootCmd(c *cli.Container) *cobra.Command {
 	rootCmd := &cobra.Command{
-		Version: appCfg.Version.VersionText(),
+		Version: c.Config.Version.VersionText(),
 		Use:     "echoy",
 		Short:   "Your intelligent CLI assistant",
 		Long: `Echoy - Where your questions echo back with enhanced intelligence.
@@ -24,7 +20,7 @@ func NewRootCmd() *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			theme.DisplayBanner(appCfg)
+			theme.DisplayBanner(c.Config)
 
 			// Skip check for init and help commands
 			if cmd.Name() == "init" || cmd.Name() == "help" {
@@ -32,16 +28,16 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			if !config.ConfigExists() {
-				cliTheme.Error().Println("Configuration not found. Please run 'echoy init' to set up.")
-				log.Error("Configuration not found. Please run 'echoy init' to set up.")
-				log.Sync()
+				c.ThemeMgr.GetCurrentTheme().Error().Println("Configuration not found. Please run 'echoy init' to set up.")
+				c.Logger.Error("Configuration not found. Please run 'echoy init' to set up.")
+				c.Logger.Sync()
 			}
 
 			return
 		},
-		RunE: func(c *cobra.Command, args []string) error {
+		RunE: func(cm *cobra.Command, args []string) error {
 			if config.ConfigExists() {
-				cliTheme.Info().Println(fmt.Sprintf("%s is configured and ready to use!", appCfg.Name))
+				c.ThemeMgr.GetCurrentTheme().Info().Println(fmt.Sprintf("%s is configured and ready to use!", c.Config.Name))
 				return nil
 			}
 

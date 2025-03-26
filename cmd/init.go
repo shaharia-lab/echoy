@@ -8,24 +8,21 @@ import (
 )
 
 // NewInitCmd creates an interactive init command
-func NewInitCmd() *cobra.Command {
-	appCfg := cli.GetAppConfig()
-	cliTheme := cli.GetTheme()
-
+func NewInitCmd(c *cli.Container) *cobra.Command {
 	cmd := &cobra.Command{
-		Version: appCfg.Version.VersionText(),
+		Version: c.Config.Version.VersionText(),
 		Use:     "init",
 		Short:   "Initialize the Echoy with a guided setup",
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			log := cli.GetLogger()
-			initializer := initPkg.NewInitializer(log, appCfg, cliTheme)
+			log := c.Logger
+			initializer := initPkg.NewInitializer(log, c.Config, c.ThemeMgr)
 			if err := initializer.Run(); err != nil {
-				cliTheme.Error().Println(fmt.Sprintf("Initialization failed: %v", err))
+				c.ThemeMgr.GetCurrentTheme().Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
 
-			cliTheme.Info().Println("Run 'echoy help' to see the available commands.")
+			c.ThemeMgr.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
 			return nil
 		},
 	}

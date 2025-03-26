@@ -6,7 +6,6 @@ import (
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/logger"
-	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
 )
 
@@ -15,36 +14,37 @@ var commit = "none"
 var date = "unknown"
 
 func main() {
-	// Initialize with configurable options
-	if err := cli.InitWithOptions(cli.InitOptions{
-		Version:  version,
-		Commit:   commit,
-		Date:     date,
-		LogLevel: logger.DebugLevel,
-		Theme:    theme.Professional,
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Error during initialization: %v\n", err)
+	container, err := cli.NewContainer(cli.InitOptions{
+		Version:  "1.0.0",
+		Commit:   "abc123",
+		Date:     "2023-11-01",
+		LogLevel: logger.InfoLevel,
+	})
+
+	if err != nil {
+		fmt.Printf("failed to initialize container: %v\n", err)
 		os.Exit(1)
 	}
 
-	appCfg := cli.GetAppConfig()
-	log := cli.GetLogger()
-	defer log.Sync()
+	log := container.Logger
+	appCfg := container.Config
+
+	defer container.Logger.Sync()
 
 	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd()
+	rootCmd := cmd.NewRootCmd(container)
 	rootCmd.AddCommand(
-		cmd.NewInitCmd(),
+		cmd.NewInitCmd(container),
 		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(appCfg),
-		cmd.NewUpdateCmd(),
+		chat.NewChatCmd(container),
+		cmd.NewUpdateCmd(container),
 	)
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		cli.GetTheme().Error().Println(err)
+		container.ThemeMgr.GetCurrentTheme().Error().Println(err)
 		//log.Error(fmt.Sprintf("%v", err))
 		log.Sync()
 		os.Exit(1)

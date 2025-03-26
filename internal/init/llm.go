@@ -9,7 +9,7 @@ import (
 
 // ConfigureLLM configures LLM provider and model settings
 func (i *Initializer) ConfigureLLM() error {
-	i.cliTheme.Info().Println("\n🤖 Configure LLM Settings")
+	i.cliTheme.GetCurrentTheme().Info().Println("\n🤖 Configure LLM Settings")
 
 	// Get providers and find the current provider's name for default selection
 	var providers = []string{}

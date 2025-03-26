@@ -2,14 +2,12 @@ package init
 
 import (
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/shaharia-lab/echoy/internal/cli"
 )
 
 // ConfigureAssistant configures assistant details
-func (i *Initializer) ConfigureAssistant() error {
-	i.cliTheme.Primary().Println("📝 Assistant Details")
+func (i *Initializer) ConfigureAssistant(assistantName string) error {
+	i.cliTheme.GetCurrentTheme().Primary().Println("📝 Assistant Details")
 
-	var assistantName string
 	promptAssistantName := &survey.Input{
 		Message: "Name of your assistant:",
 		Help:    "Give your AI assistant a friendly name",
@@ -21,7 +19,7 @@ func (i *Initializer) ConfigureAssistant() error {
 	}
 
 	if assistantName == "" {
-		assistantName = cli.GetAppConfig().Name
+		assistantName = assistantName
 	}
 
 	i.Config.Assistant.Name = assistantName
