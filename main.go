@@ -6,6 +6,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
 )
 
@@ -19,6 +20,7 @@ func main() {
 		Commit:   commit,
 		Date:     date,
 		LogLevel: logger.InfoLevel,
+		Theme:    theme.Professional,
 	})
 
 	if err != nil {
