@@ -114,10 +114,76 @@ func (i *Initializer) ConfigureLLM() error {
 		apiToken = i.Config.LLM.Token
 	}
 
-	// Update all settings at once after all information has been collected
 	i.Config.LLM.Provider = providerID
 	i.Config.LLM.Model = selectedModel
 	i.Config.LLM.Token = apiToken
+
+	var maxTokens int
+	if i.Config.LLM.MaxTokens == 0 {
+		i.Config.LLM.MaxTokens = 1000
+	}
+
+	promptMaxTokens := &survey.Input{
+		Message: "Enter the maximum number of tokens:",
+		Default: fmt.Sprintf("%d", i.Config.LLM.MaxTokens),
+		Help:    "Defines the maximum length of the generated response.",
+	}
+
+	err = survey.AskOne(promptMaxTokens, &maxTokens)
+	if err != nil {
+		return err
+	}
+
+	var topP float64
+	if i.Config.LLM.TopP == 0 {
+		i.Config.LLM.TopP = 0.5
+	}
+	promptTopP := &survey.Input{
+		Message: "Enter the top-p value (0.0 - 1.0):",
+		Default: fmt.Sprintf("%f", i.Config.LLM.TopP),
+		Help:    "Top-p sampling narrows the set of possible results to those whose probabilities sum up to this value.",
+	}
+
+	err = survey.AskOne(promptTopP, &topP)
+	if err != nil {
+		return err
+	}
+
+	var topK int
+	if i.Config.LLM.TopK == 0 {
+		i.Config.LLM.TopK = 50
+	}
+	promptTopK := &survey.Input{
+		Message: "Enter the top-k value:",
+		Default: fmt.Sprintf("%d", i.Config.LLM.TopK),
+		Help:    "Limits the sampling to the top-k most likely results.",
+	}
+
+	err = survey.AskOne(promptTopK, &topK)
+	if err != nil {
+		return err
+	}
+
+	var temperature float64
+	if i.Config.LLM.Temperature == 0 {
+		i.Config.LLM.Temperature = 0.5
+	}
+
+	promptTemperature := &survey.Input{
+		Message: "Enter the temperature value (0.0 - 1.0):",
+		Default: fmt.Sprintf("%f", i.Config.LLM.Temperature),
+		Help:    "Controls the creativity of the responses. Higher temperature values make results more varied.",
+	}
+
+	err = survey.AskOne(promptTemperature, &temperature)
+	if err != nil {
+		return err
+	}
+
+	i.Config.LLM.MaxTokens = maxTokens
+	i.Config.LLM.TopP = topP
+	i.Config.LLM.TopK = topK
+	i.Config.LLM.Temperature = temperature
 
 	return nil
 }

@@ -45,9 +45,13 @@ type ToolsConfig struct {
 
 // LLMConfig represents the LLM configuration
 type LLMConfig struct {
-	Provider string `yaml:"provider"`
-	Model    string `yaml:"model"`
-	Token    string `yaml:"token"`
+	Provider    string  `yaml:"provider"`
+	Model       string  `yaml:"model"`
+	Token       string  `yaml:"token"`
+	MaxTokens   int     `yaml:"max_tokens"`
+	TopP        float64 `yaml:"top_p"`
+	Temperature float64 `yaml:"temperature"`
+	TopK        int     `yaml:"top_k"`
 }
 
 // FrontendConfig represents the frontend configuration

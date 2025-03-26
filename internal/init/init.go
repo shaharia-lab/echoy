@@ -9,9 +9,8 @@ import (
 
 // Initializer handles the interactive setup process
 type Initializer struct {
-	Config       config.Config
-	IsUpdateMode bool
-	// Dependencies can be injected here for testing
+	Config        config.Config
+	IsUpdateMode  bool
 	configManager ConfigManager
 	log           *logger.Logger
 	appConfig     *config.AppConfig
