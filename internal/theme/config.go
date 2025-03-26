@@ -46,9 +46,3 @@ func SetThemeByName(name Name) {
 
 	SetTheme(theme)
 }
-
-// ResetTheme resets the theme instance to nil
-func resetTheme() {
-	defaultTheme = nil
-	once = sync.Once{}
-}
