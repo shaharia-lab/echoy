@@ -18,15 +18,15 @@ import (
 type Session struct {
 	config             *config.Config
 	theme              theme.Theme
-	chatService        ChatService
+	chatService        Service
 	chatHistoryStorage goai.ChatHistoryStorage
 	sessionID          uuid.UUID
 	reader             *bufio.Reader
-	chatHistoryService ChatHistoryService
+	chatHistoryService HistoryService
 }
 
 // NewChatSession creates and configures a new chat session
-func NewChatSession(config *config.Config, theme theme.Theme, chatService ChatService, chatHistoryService ChatHistoryService) (*Session, error) {
+func NewChatSession(config *config.Config, theme theme.Theme, chatService Service, chatHistoryService HistoryService) (*Session, error) {
 	ctx := context.Background()
 
 	sessionID, err := chatHistoryService.CreateChat(ctx)
@@ -95,7 +95,7 @@ func (s *Session) readUserInput() (string, error) {
 		trimmedLine := strings.TrimSpace(line)
 		lines = append(lines, trimmedLine)
 
-		// If we get an empty line and it's not the first line, consider it a submission signal
+		// If we get an empty line, and it's not the first line, consider it a submission signal
 		if trimmedLine == "" && len(lines) > 1 {
 			isSubmitting = true
 		}

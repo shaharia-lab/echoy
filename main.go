@@ -38,7 +38,7 @@ func main() {
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(),
 		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(appCfg, log),
+		chat.NewChatCmd(appCfg),
 		cmd.NewUpdateCmd(),
 	)
 

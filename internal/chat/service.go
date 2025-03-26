@@ -8,22 +8,22 @@ import (
 	"time"
 )
 
-// ChatServiceImpl implements the ChatService interface
-type ChatServiceImpl struct {
+// ServiceImpl implements the ChatService interface
+type ServiceImpl struct {
 	llmService     LLMService
-	historyService ChatHistoryService
+	historyService HistoryService
 }
 
 // NewChatService creates a new chat service
-func NewChatService(llmService LLMService, historyService ChatHistoryService) *ChatServiceImpl {
-	return &ChatServiceImpl{
+func NewChatService(llmService LLMService, historyService HistoryService) *ServiceImpl {
+	return &ServiceImpl{
 		llmService:     llmService,
 		historyService: historyService,
 	}
 }
 
 // Chat provides non-streaming chat functionality
-func (s *ChatServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message string) (goai.LLMResponse, error) {
+func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message string) (goai.LLMResponse, error) {
 	// Create user message
 	userMessage := goai.LLMMessage{
 		Role: goai.UserRole,
@@ -60,7 +60,7 @@ func (s *ChatServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message
 }
 
 // ChatStreaming provides streaming chat functionality
-func (s *ChatServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error) {
+func (s *ServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error) {
 	// Create user message
 	userMessage := goai.LLMMessage{
 		Role: goai.UserRole,
@@ -88,7 +88,7 @@ func (s *ChatServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID
 }
 
 // processStreamingResponse collects the streaming response and saves it to history
-func (s *ChatServiceImpl) processStreamingResponse(ctx context.Context, sessionID uuid.UUID, responseChan <-chan goai.StreamingLLMResponse) {
+func (s *ServiceImpl) processStreamingResponse(ctx context.Context, sessionID uuid.UUID, responseChan <-chan goai.StreamingLLMResponse) {
 	var completeResponse string
 
 	for streamingResp := range responseChan {

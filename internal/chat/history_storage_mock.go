@@ -31,7 +31,7 @@ func NewMockChatHistoryStorage() *MockChatHistoryStorage {
 }
 
 // CreateChat initializes a new chat conversation
-func (m *MockChatHistoryStorage) CreateChat(ctx context.Context) (*goai.ChatHistory, error) {
+func (m *MockChatHistoryStorage) CreateChat(_ context.Context) (*goai.ChatHistory, error) {
 	if m.createChatErr != nil {
 		return nil, m.createChatErr
 	}
@@ -50,7 +50,7 @@ func (m *MockChatHistoryStorage) CreateChat(ctx context.Context) (*goai.ChatHist
 }
 
 // AddMessage adds a new message to an existing conversation
-func (m *MockChatHistoryStorage) AddMessage(ctx context.Context, uuid uuid.UUID, message goai.ChatHistoryMessage) error {
+func (m *MockChatHistoryStorage) AddMessage(_ context.Context, uuid uuid.UUID, message goai.ChatHistoryMessage) error {
 	if m.addMessageErr != nil {
 		return m.addMessageErr
 	}
@@ -68,7 +68,7 @@ func (m *MockChatHistoryStorage) AddMessage(ctx context.Context, uuid uuid.UUID,
 }
 
 // GetChat retrieves a conversation by its ChatUUID
-func (m *MockChatHistoryStorage) GetChat(ctx context.Context, uuid uuid.UUID) (*goai.ChatHistory, error) {
+func (m *MockChatHistoryStorage) GetChat(_ context.Context, uuid uuid.UUID) (*goai.ChatHistory, error) {
 	if m.getChatErr != nil {
 		return nil, m.getChatErr
 	}
@@ -85,7 +85,7 @@ func (m *MockChatHistoryStorage) GetChat(ctx context.Context, uuid uuid.UUID) (*
 }
 
 // ListChatHistories returns all stored conversations
-func (m *MockChatHistoryStorage) ListChatHistories(ctx context.Context) ([]goai.ChatHistory, error) {
+func (m *MockChatHistoryStorage) ListChatHistories(_ context.Context) ([]goai.ChatHistory, error) {
 	if m.listChatHistoriesErr != nil {
 		return nil, m.listChatHistoriesErr
 	}
@@ -102,7 +102,7 @@ func (m *MockChatHistoryStorage) ListChatHistories(ctx context.Context) ([]goai.
 }
 
 // DeleteChat removes a conversation by its ChatUUID
-func (m *MockChatHistoryStorage) DeleteChat(ctx context.Context, uuid uuid.UUID) error {
+func (m *MockChatHistoryStorage) DeleteChat(_ context.Context, uuid uuid.UUID) error {
 	if m.deleteChatErr != nil {
 		return m.deleteChatErr
 	}

@@ -6,13 +6,12 @@ import (
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
 	initPkg "github.com/shaharia-lab/echoy/internal/init"
-	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/goai"
 	"github.com/spf13/cobra"
 )
 
 // NewChatCmd creates a new chat command
-func NewChatCmd(appCfg *config.AppConfig, log *logger.Logger) *cobra.Command {
+func NewChatCmd(appCfg *config.AppConfig) *cobra.Command {
 	cmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "chat",
