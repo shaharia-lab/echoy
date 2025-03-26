@@ -54,7 +54,6 @@ func (s *Session) Start(ctx context.Context) error {
 			return fmt.Errorf("error reading input: %w", err)
 		}
 
-		// Handle special commands
 		if strings.ToLower(input) == "exit" {
 			s.theme.Info().Println("Ending chat session. Goodbye")
 			return nil
@@ -95,13 +94,11 @@ func (s *Session) readUserInput() (string, error) {
 		trimmedLine := strings.TrimSpace(line)
 		lines = append(lines, trimmedLine)
 
-		// If we get an empty line, and it's not the first line, consider it a submission signal
 		if trimmedLine == "" && len(lines) > 1 {
 			isSubmitting = true
 		}
 	}
 
-	// Process all lines (except the last empty one)
 	for i, line := range lines {
 		if i == len(lines)-1 && line == "" {
 			continue
