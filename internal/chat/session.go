@@ -14,8 +14,8 @@ import (
 	"github.com/shaharia-lab/goai"
 )
 
-// ChatSession represents an interactive chat session
-type ChatSession struct {
+// Session represents an interactive chat session
+type Session struct {
 	config             *config.Config
 	theme              theme.Theme
 	chatService        *Service
@@ -30,7 +30,7 @@ func NewChatSession(
 	theme theme.Theme,
 	chatService *Service,
 	chatHistoryStorage goai.ChatHistoryStorage,
-) (*ChatSession, error) {
+) (*Session, error) {
 	ctx := context.Background()
 
 	sessionID, err := chatHistoryStorage.CreateChat(ctx)
@@ -38,7 +38,7 @@ func NewChatSession(
 		return nil, fmt.Errorf("error creating chat session: %w", err)
 	}
 
-	return &ChatSession{
+	return &Session{
 		config:             config,
 		theme:              theme,
 		chatService:        chatService,
@@ -49,7 +49,7 @@ func NewChatSession(
 }
 
 // Start begins the interactive chat session
-func (s *ChatSession) Start(ctx context.Context) error {
+func (s *Session) Start(ctx context.Context) error {
 	s.showWelcomeMessage()
 
 	for {
@@ -75,58 +75,52 @@ func (s *ChatSession) Start(ctx context.Context) error {
 	}
 }
 
-func (s *ChatSession) showWelcomeMessage() {
+func (s *Session) showWelcomeMessage() {
 	s.theme.Info().Println("\n🗨️ Chat session started.")
 	s.theme.Subtle().Println("Session ID: ", s.sessionID)
-	s.theme.Secondary().Println("Type your message and press Enter. Type 'exit' to end the session.")
-	s.theme.Secondary().Println("For multi-line input: Type '/m' to start multi-line mode, then '/end' on a new line to submit.")
+	s.theme.Secondary().Println("Type your message and press Enter. For multi-line input, continue typing.")
+	s.theme.Secondary().Println("Press Enter twice (empty line) to submit your message.")
+	s.theme.Secondary().Println("Type 'exit' to end the session.")
 }
 
-func (s *ChatSession) readUserInput() (string, error) {
+func (s *Session) readUserInput() (string, error) {
 	s.theme.Primary().Print(fmt.Sprintf("%s > ", s.config.User.Name))
 
-	// Default to single-line mode
-	line, err := s.reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
-
-	trimmedLine := strings.TrimSpace(line)
-
-	// Check for multi-line mode trigger
-	if trimmedLine == "/m" {
-		return s.readMultiLineInput()
-	}
-
-	// Normal single-line input
-	return trimmedLine, nil
-}
-
-func (s *ChatSession) readMultiLineInput() (string, error) {
-	s.theme.Secondary().Println("Multi-line mode. Type '/end' on a new line to submit.")
-
 	var builder strings.Builder
+	var lines []string
+	isSubmitting := false
 
-	for {
-		s.theme.Primary().Print("... ")
+	for !isSubmitting {
 		line, err := s.reader.ReadString('\n')
 		if err != nil {
 			return "", err
 		}
 
 		trimmedLine := strings.TrimSpace(line)
+		lines = append(lines, trimmedLine)
 
-		if trimmedLine == "/end" {
-			break
+		// If we get an empty line and it's not the first line, consider it a submission signal
+		if trimmedLine == "" && len(lines) > 1 {
+			isSubmitting = true
+		}
+	}
+
+	// Process all lines (except the last empty one)
+	for i, line := range lines {
+		if i == len(lines)-1 && line == "" {
+			continue
 		}
 
+		if i > 0 {
+			builder.WriteString("\n")
+		}
 		builder.WriteString(line)
 	}
 
-	return strings.TrimSpace(builder.String()), nil
+	return builder.String(), nil
 }
 
-func (s *ChatSession) processMessage(ctx context.Context, input string) error {
+func (s *Session) processMessage(ctx context.Context, input string) error {
 	thinking := make(chan bool)
 	s.showThinkingAnimation(thinking)
 
@@ -144,7 +138,7 @@ func (s *ChatSession) processMessage(ctx context.Context, input string) error {
 	return nil
 }
 
-func (s *ChatSession) showThinkingAnimation(thinking chan bool) {
+func (s *Session) showThinkingAnimation(thinking chan bool) {
 	go func() {
 		dots := []string{".  ", ".. ", "..."}
 		i := 0

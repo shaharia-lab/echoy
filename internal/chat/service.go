@@ -24,7 +24,7 @@ func NewChatService(llmConfig config.LLMConfig, chatHistoryStorage goai.ChatHist
 	}
 
 	llmRequestConfig := goai.LLMRequestConfig{
-		MaxToken:       500,
+		MaxToken:       1000,
 		TopP:           0.5,
 		Temperature:    0.5,
 		TopK:           40,
