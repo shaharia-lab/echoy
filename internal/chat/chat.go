@@ -4,18 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/goai"
 	"time"
 )
 
 // ServiceImpl implements the ChatService interface
 type ServiceImpl struct {
-	llmService     LLMService
+	llmService     llm.Service
 	historyService HistoryService
 }
 
 // NewChatService creates a new chat service
-func NewChatService(llmService LLMService, historyService HistoryService) *ServiceImpl {
+func NewChatService(llmService llm.Service, historyService HistoryService) *ServiceImpl {
 	return &ServiceImpl{
 		llmService:     llmService,
 		historyService: historyService,
