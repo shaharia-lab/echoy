@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+// HistoryService defines operations for chat history management
+type HistoryService interface {
+	CreateChat(ctx context.Context) (*goai.ChatHistory, error)
+	AddMessage(ctx context.Context, uuid uuid.UUID, message goai.ChatHistoryMessage) error
+	GetChat(ctx context.Context, uuid uuid.UUID) (*goai.ChatHistory, error)
+}
+
+// Service provides chat functionality using the LLM
+type Service interface {
+	Chat(ctx context.Context, sessionID uuid.UUID, message string) (goai.LLMResponse, error)
+	ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error)
+}
+
 // ServiceImpl implements the ChatService interface
 type ServiceImpl struct {
 	llmService     llm.Service
