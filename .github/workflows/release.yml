@@ -10,7 +10,31 @@ permissions:
   packages: write
 
 jobs:
+  validate-ci-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CI status for commit
+        id: verify-ci
+        run: |
+          # Get the commit SHA that this tag points to
+          TAG_SHA=$(git ls-remote https://github.com/${{ github.repository }} ${{ github.ref }} | cut -f1)
+          echo "Tag SHA: $TAG_SHA"
+          
+          # Check if CI workflow passed for this commit SHA
+          CI_STATUS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/$TAG_SHA/check-runs?check_name=CI" | \
+            jq -r '.check_runs[0].conclusion')
+          
+          if [ "$CI_STATUS" = "success" ]; then
+            echo "CI passed successfully for this commit!"
+            exit 0
+          else
+            echo "::error::CI has not passed for this commit. Please ensure CI passes before creating a release tag."
+            exit 1
+          fi
+
   release:
+    needs: validate-ci-workflow
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -28,7 +52,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: goreleaser/goreleaser-action@v6
-        if: success() && startsWith(github.ref, 'refs/tags/')
         with:
           version: '~> v2'
           args: release --clean
