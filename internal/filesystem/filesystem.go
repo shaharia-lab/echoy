@@ -1,3 +1,4 @@
+// Package filesystem provides the filesystem related operations like creating directories, files, etc.
 package filesystem
 
 import (
