@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
 	"strings"
 
@@ -12,24 +12,22 @@ import (
 )
 
 // NewUpdateCmd creates a new update command
-func NewUpdateCmd() *cobra.Command {
-	appCfg := cli.GetAppConfig()
-
+func NewUpdateCmd(appCfg *config.AppConfig, themeManager *theme.Manager) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "update",
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUpdate(appCfg.Repository, appCfg.Version.Version)
+			return runUpdate(themeManager.GetCurrentTheme(), appCfg.Repository, appCfg.Version.Version)
 		},
 	}
 
 	return updateCmd
 }
 
-func runUpdate(repository config.Repository, currentAppVersion string) error {
-	cli.GetTheme().Info().Println(
+func runUpdate(theme theme.Theme, repository config.Repository, currentAppVersion string) error {
+	theme.Info().Println(
 		fmt.Sprintf("Checking for updates for %s/%s... [Current version: %s]",
 			repository.Owner,
 			repository.Repo,
@@ -44,7 +42,7 @@ func runUpdate(repository config.Repository, currentAppVersion string) error {
 	}
 
 	if latest == nil {
-		cli.GetTheme().Warning().Println("No updates found")
+		theme.Warning().Println("No updates found")
 		return nil
 	}
 

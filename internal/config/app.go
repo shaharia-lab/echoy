@@ -4,17 +4,20 @@ import (
 	"fmt"
 )
 
+// Repository represents a GitHub repository
 type Repository struct {
 	Owner string
 	Repo  string
 }
 
+// AppConfig represents the configuration for the application
 type AppConfig struct {
 	Name       string
 	Repository Repository
 	Version    Version
 }
 
+// Version represents the version information for the application
 type Version struct {
 	Version string
 	Commit  string
@@ -58,7 +61,6 @@ func NewDefaultConfig(opts ...Option) *AppConfig {
 		},
 	}
 
-	// Apply all options
 	for _, opt := range opts {
 		opt(cfg)
 	}

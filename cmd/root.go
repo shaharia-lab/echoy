@@ -2,18 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 )
 
 // NewRootCmd creates and returns the root command
-func NewRootCmd() *cobra.Command {
-	appCfg := cli.GetAppConfig()
-	log := cli.GetLogger()
-	cliTheme := cli.GetTheme()
-
+func NewRootCmd(appCfg *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "echoy",
@@ -24,24 +20,24 @@ func NewRootCmd() *cobra.Command {
             responses, creating a true dialogue between you and technology.`,
 
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			theme.DisplayBanner(appCfg)
+			defer logger.Sync()
 
-			// Skip check for init and help commands
+			themeManager.DisplayBanner(fmt.Sprintf("Welcome to %s", appCfg.Name), 40, "Your AI assistant for the CLI")
+
 			if cmd.Name() == "init" || cmd.Name() == "help" {
 				return
 			}
 
 			if !config.ConfigExists() {
-				cliTheme.Error().Println("Configuration not found. Please run 'echoy init' to set up.")
-				log.Error("Configuration not found. Please run 'echoy init' to set up.")
-				log.Sync()
+				themeManager.GetCurrentTheme().Error().Println("Configuration not found. Please run 'echoy init' to set up.")
+				logger.Error("Configuration not found. Please run 'echoy init' to set up.")
 			}
 
 			return
 		},
-		RunE: func(c *cobra.Command, args []string) error {
+		RunE: func(cm *cobra.Command, args []string) error {
 			if config.ConfigExists() {
-				cliTheme.Info().Println(fmt.Sprintf("%s is configured and ready to use!", appCfg.Name))
+				themeManager.GetCurrentTheme().Info().Println(fmt.Sprintf("%s is configured and ready to use!", appCfg.Name))
 				return nil
 			}
 

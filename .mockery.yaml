@@ -1,0 +1,15 @@
+with-expecter: true
+log-level: info
+disable-version-string: true
+issue-845-fix: true
+dir: "{{.InterfaceDir}}/mocks"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: "mocks"
+filename: "{{.InterfaceNameLower}}_mock.go"
+exclude:
+  - "vendor"
+all: true
+packages:
+  github.com/shaharia-lab/echoy:
+    config:
+      recursive: true

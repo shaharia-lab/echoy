@@ -2,30 +2,28 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/shaharia-lab/echoy/internal/cli"
-	initPkg "github.com/shaharia-lab/echoy/internal/init"
+	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/initializer"
+	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 )
 
 // NewInitCmd creates an interactive init command
-func NewInitCmd() *cobra.Command {
-	appCfg := cli.GetAppConfig()
-	cliTheme := cli.GetTheme()
-
+func NewInitCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager) *cobra.Command {
 	cmd := &cobra.Command{
-		Version: appCfg.Version.VersionText(),
+		Version: config.Version.VersionText(),
 		Use:     "init",
 		Short:   "Initialize the Echoy with a guided setup",
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			log := cli.GetLogger()
-			initializer := initPkg.NewInitializer(log, appCfg, cliTheme)
-			if err := initializer.Run(); err != nil {
-				cliTheme.Error().Println(fmt.Sprintf("Initialization failed: %v", err))
+			init := initializer.NewInitializer(logger, config, themeManager)
+			if err := init.Run(); err != nil {
+				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
 
-			cliTheme.Info().Println("Run 'echoy help' to see the available commands.")
+			themeManager.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
 			return nil
 		},
 	}

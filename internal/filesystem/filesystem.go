@@ -1,4 +1,4 @@
-// Package filesystem contains the implementation of the Filesystem struct.
+// Package filesystem provides the filesystem related operations like creating directories, files, etc.
 package filesystem
 
 import (
@@ -12,45 +12,61 @@ import (
 	"strings"
 )
 
+// PathType represents a type of path
 type PathType string
 
 const (
 	configYamlFileName = "config.yaml"
 
-	AppDirectory    PathType = "app"
-	CacheDirectory  PathType = "cache"
+	// AppDirectory represents the application directory
+	AppDirectory PathType = "app"
+
+	// CacheDirectory represents the cache directory
+	CacheDirectory PathType = "cache"
+
+	// ConfigDirectory represents the config directory
 	ConfigDirectory PathType = "config"
-	ConfigFilePath  PathType = "config_file"
-	LogsDirectory   PathType = "logs"
-	LogsFilePath    PathType = "log_file"
-	DataDirectory   PathType = "data"
-	ChatHistoryDB   PathType = "chat_history_db"
+
+	// ConfigFilePath represents the config file path
+	ConfigFilePath PathType = "config_file"
+
+	// LogsDirectory represents the logs directory
+	LogsDirectory PathType = "logs"
+
+	// LogsFilePath represents the logs file path
+	LogsFilePath PathType = "log_file"
+
+	// DataDirectory represents the data directory
+	DataDirectory PathType = "data"
+
+	// ChatHistoryDB represents the chat history database
+	ChatHistoryDB PathType = "chat_history_db"
 )
 
-// Filesystem is a struct that contains the methods to interact with local storage.
+// Filesystem provides filesystem related operations
 type Filesystem struct {
 	logger *logrus.Logger
 	appCfg *config.AppConfig
 	paths  map[PathType]string
 }
 
-// NewAppFilesystem creates a new Filesystem instance.
+// NewAppFilesystem creates a new filesystem instance
 func NewAppFilesystem(appCfg *config.AppConfig) *Filesystem {
 	return &Filesystem{
 		appCfg: appCfg,
 	}
 }
 
+// EnsureAllPaths ensures all required paths exist
 func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	paths := map[PathType]string{}
 
-	appDirectory, err := s.EnsureAppDirectory()
+	appDirectory, err := s.ensureAppDirectory()
 	if err != nil {
 		return paths, err
 	}
 	paths[AppDirectory] = appDirectory
 
-	// create cache directory under app directory
 	cacheDir := filepath.Join(appDirectory, "cache")
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(cacheDir, 0755); err != nil {
@@ -59,7 +75,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[CacheDirectory] = cacheDir
 
-	// create config directory under app directory
 	configDir := filepath.Join(appDirectory, "config")
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -68,7 +83,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[ConfigDirectory] = configDir
 
-	// create logs directory under app directory
 	logsDir := filepath.Join(appDirectory, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(logsDir, 0755); err != nil {
@@ -77,7 +91,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[LogsDirectory] = logsDir
 
-	// create data directory under app directory
 	dataDir := filepath.Join(appDirectory, "data")
 	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -86,14 +99,12 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[DataDirectory] = dataDir
 
-	// create chat history database file under data directory
-	chatHistoryDBFilePath, err := s.CreateSQLiteDBFile(dataDir, "chat_history.db")
+	chatHistoryDBFilePath, err := s.createChatHistoryDBFile(dataDir, "chat_history.db")
 	if err != nil {
 		return paths, err
 	}
 	paths[ChatHistoryDB] = chatHistoryDBFilePath
 
-	// create empty config file under config directory
 	configFilePath := filepath.Join(configDir, configYamlFileName)
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(configFilePath); err != nil {
@@ -102,7 +113,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[ConfigFilePath] = configFilePath
 
-	// create one empty log file under logs directory
 	logFilePath := filepath.Join(logsDir, fmt.Sprintf("%s.log", strings.ToLower(s.appCfg.Name)))
 	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(logFilePath); err != nil {
@@ -114,7 +124,7 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	return paths, nil
 }
 
-func (s *Filesystem) EnsureAppDirectory() (string, error) {
+func (s *Filesystem) ensureAppDirectory() (string, error) {
 	homeDir, err := s.getUserHomeDirectory()
 	if err != nil {
 		return "", err
@@ -131,7 +141,7 @@ func (s *Filesystem) EnsureAppDirectory() (string, error) {
 	return appDir, nil
 }
 
-func (s *Filesystem) CreateSQLiteDBFile(dataDirectory, fileName string) (string, error) {
+func (s *Filesystem) createChatHistoryDBFile(dataDirectory, fileName string) (string, error) {
 	dbFilePath := filepath.Join(dataDirectory, fileName)
 	if _, err := os.Stat(dbFilePath); err == nil {
 		return dbFilePath, nil
@@ -143,14 +153,12 @@ func (s *Filesystem) CreateSQLiteDBFile(dataDirectory, fileName string) (string,
 	}
 	defer file.Close()
 
-	// Initialize SQLite database
 	sqliteDB, err := sql.Open("sqlite3", dbFilePath)
 	if err != nil {
 		return "", err
 	}
 	defer sqliteDB.Close()
 
-	// Test connection to ensure SQLite file is valid
 	if err := sqliteDB.Ping(); err != nil {
 		return "", err
 	}

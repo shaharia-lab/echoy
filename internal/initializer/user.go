@@ -1,4 +1,4 @@
-package init
+package initializer
 
 import (
 	"github.com/AlecAivazis/survey/v2"
@@ -6,7 +6,7 @@ import (
 
 // ConfigureUser configures user information
 func (i *Initializer) ConfigureUser() error {
-	i.cliTheme.Primary().Println("\n📝 Your Information")
+	i.cliTheme.GetCurrentTheme().Primary().Println("\n📝 Your Information")
 
 	var userName string
 	promptUserName := &survey.Input{

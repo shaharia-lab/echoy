@@ -15,36 +15,38 @@ var commit = "none"
 var date = "unknown"
 
 func main() {
-	// Initialize with configurable options
-	if err := cli.InitWithOptions(cli.InitOptions{
+	container, err := cli.NewContainer(cli.InitOptions{
 		Version:  version,
 		Commit:   commit,
 		Date:     date,
-		LogLevel: logger.DebugLevel,
-		Theme:    theme.Professional,
-	}); err != nil {
-		fmt.Fprintf(os.Stderr, "Error during initialization: %v\n", err)
+		LogLevel: logger.InfoLevel,
+		Theme:    theme.NewProfessionalTheme(),
+	})
+
+	if err != nil {
+		fmt.Printf("failed to initialize container: %v\n", err)
 		os.Exit(1)
 	}
 
-	appCfg := cli.GetAppConfig()
-	log := cli.GetLogger()
-	defer log.Sync()
+	log := container.Logger
+	appCfg := container.Config
+
+	defer container.Logger.Sync()
 
 	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd()
+	rootCmd := cmd.NewRootCmd(appCfg, container.Logger, container.ThemeMgr)
 	rootCmd.AddCommand(
-		cmd.NewInitCmd(),
+		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr),
 		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(appCfg),
-		cmd.NewUpdateCmd(),
+		chat.NewChatCmd(container.Config, container.ChatSession),
+		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		cli.GetTheme().Error().Println(err)
+		container.ThemeMgr.GetCurrentTheme().Error().Println(err)
 		//log.Error(fmt.Sprintf("%v", err))
 		log.Sync()
 		os.Exit(1)
