@@ -140,31 +140,35 @@ func (s *Session) processMessage(ctx context.Context, input string) error {
 }
 
 func (s *Session) processMessageStreaming(ctx context.Context, input string) error {
-	// Get streaming response from the chat service
+	thinking := make(chan bool)
+	s.showThinkingAnimation(thinking)
+
 	streamChan, err := s.chatService.ChatStreaming(ctx, s.sessionID, input)
 	if err != nil {
+		thinking <- true
 		return fmt.Errorf("error processing chat input: %w", err)
 	}
 
-	// Cancel thinking animation and clear line
+	firstToken := true
+
 	s.theme.Secondary().Print("AI > ")
 
-	// Process the streaming response
-	var responseParts []string
-
 	for streamResp := range streamChan {
+		if firstToken {
+			thinking <- true
+			fmt.Print("\r                \r")
+			s.theme.Secondary().Print("AI > ")
+			firstToken = false
+		}
+
 		if streamResp.Error != nil {
 			return fmt.Errorf("error in streaming response: %w", streamResp.Error)
 		}
 
-		// Print the text chunk as it comes in
 		s.theme.Subtle().Print(streamResp.Text)
-		responseParts = append(responseParts, streamResp.Text)
 	}
 
-	// Add a newline after the complete response
 	fmt.Println()
-
 	return nil
 }
 
