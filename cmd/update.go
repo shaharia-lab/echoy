@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
@@ -13,14 +12,14 @@ import (
 )
 
 // NewUpdateCmd creates a new update command
-func NewUpdateCmd(c *cli.Container) *cobra.Command {
+func NewUpdateCmd(appCfg *config.AppConfig, themeManager *theme.Manager) *cobra.Command {
 	updateCmd := &cobra.Command{
-		Version: c.Config.Version.VersionText(),
+		Version: appCfg.Version.VersionText(),
 		Use:     "update",
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runUpdate(c.ThemeMgr.GetCurrentTheme(), c.Config.Repository, c.Config.Version.Version)
+			return runUpdate(themeManager.GetCurrentTheme(), appCfg.Repository, appCfg.Version.Version)
 		},
 	}
 

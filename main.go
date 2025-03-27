@@ -41,7 +41,7 @@ func main() {
 		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr),
 		cmd.NewConfigCmd(appCfg, log),
 		chat.NewChatCmd(container),
-		cmd.NewUpdateCmd(container),
+		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)
 
 	// execute the command
