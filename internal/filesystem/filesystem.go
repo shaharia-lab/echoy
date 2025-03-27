@@ -1,4 +1,3 @@
-// Package filesystem contains the implementation of the Filesystem struct.
 package filesystem
 
 import (
@@ -27,14 +26,12 @@ const (
 	ChatHistoryDB   PathType = "chat_history_db"
 )
 
-// Filesystem is a struct that contains the methods to interact with local storage.
 type Filesystem struct {
 	logger *logrus.Logger
 	appCfg *config.AppConfig
 	paths  map[PathType]string
 }
 
-// NewAppFilesystem creates a new Filesystem instance.
 func NewAppFilesystem(appCfg *config.AppConfig) *Filesystem {
 	return &Filesystem{
 		appCfg: appCfg,
@@ -50,7 +47,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[AppDirectory] = appDirectory
 
-	// create cache directory under app directory
 	cacheDir := filepath.Join(appDirectory, "cache")
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(cacheDir, 0755); err != nil {
@@ -59,7 +55,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[CacheDirectory] = cacheDir
 
-	// create config directory under app directory
 	configDir := filepath.Join(appDirectory, "config")
 	if _, err := os.Stat(configDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(configDir, 0755); err != nil {
@@ -68,7 +63,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[ConfigDirectory] = configDir
 
-	// create logs directory under app directory
 	logsDir := filepath.Join(appDirectory, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(logsDir, 0755); err != nil {
@@ -77,7 +71,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[LogsDirectory] = logsDir
 
-	// create data directory under app directory
 	dataDir := filepath.Join(appDirectory, "data")
 	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dataDir, 0755); err != nil {
@@ -86,14 +79,12 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[DataDirectory] = dataDir
 
-	// create chat history database file under data directory
 	chatHistoryDBFilePath, err := s.CreateSQLiteDBFile(dataDir, "chat_history.db")
 	if err != nil {
 		return paths, err
 	}
 	paths[ChatHistoryDB] = chatHistoryDBFilePath
 
-	// create empty config file under config directory
 	configFilePath := filepath.Join(configDir, configYamlFileName)
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(configFilePath); err != nil {
@@ -102,7 +93,6 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[ConfigFilePath] = configFilePath
 
-	// create one empty log file under logs directory
 	logFilePath := filepath.Join(logsDir, fmt.Sprintf("%s.log", strings.ToLower(s.appCfg.Name)))
 	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(logFilePath); err != nil {
@@ -143,14 +133,12 @@ func (s *Filesystem) CreateSQLiteDBFile(dataDirectory, fileName string) (string,
 	}
 	defer file.Close()
 
-	// Initialize SQLite database
 	sqliteDB, err := sql.Open("sqlite3", dbFilePath)
 	if err != nil {
 		return "", err
 	}
 	defer sqliteDB.Close()
 
-	// Test connection to ensure SQLite file is valid
 	if err := sqliteDB.Ping(); err != nil {
 		return "", err
 	}
