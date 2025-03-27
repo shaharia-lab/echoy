@@ -1,4 +1,4 @@
-package chat
+package llm
 
 import (
 	"context"
@@ -8,14 +8,20 @@ import (
 	"strings"
 )
 
-// LLMServiceImpl implements the LLMService interface
-type LLMServiceImpl struct {
+// Service defines the interface for language model interactions
+type Service interface {
+	Generate(ctx context.Context, messages []goai.LLMMessage) (goai.LLMResponse, error)
+	GenerateStream(ctx context.Context, messages []goai.LLMMessage) (<-chan goai.StreamingLLMResponse, error)
+}
+
+// ServiceImpl implements the Service interface
+type ServiceImpl struct {
 	provider goai.LLMProvider
 	config   goai.LLMRequestConfig
 }
 
 // NewLLMService creates a new LLM service
-func NewLLMService(llmConfig config.LLMConfig) (*LLMServiceImpl, error) {
+func NewLLMService(llmConfig config.LLMConfig) (*ServiceImpl, error) {
 	provider, err := buildLLMProvider(llmConfig)
 	if err != nil {
 		return nil, err
@@ -27,20 +33,20 @@ func NewLLMService(llmConfig config.LLMConfig) (*LLMServiceImpl, error) {
 		goai.UseToolsProvider(toolsProvider),
 	)
 
-	return &LLMServiceImpl{
+	return &ServiceImpl{
 		provider: provider,
 		config:   cfg,
 	}, nil
 }
 
-// Generate implements the LLMService interface
-func (s *LLMServiceImpl) Generate(ctx context.Context, messages []goai.LLMMessage) (goai.LLMResponse, error) {
+// Generate implements the Service interface
+func (s *ServiceImpl) Generate(ctx context.Context, messages []goai.LLMMessage) (goai.LLMResponse, error) {
 	llm := goai.NewLLMRequest(s.config, s.provider)
 	return llm.Generate(ctx, messages)
 }
 
-// GenerateStream implements the LLMService interface
-func (s *LLMServiceImpl) GenerateStream(ctx context.Context, messages []goai.LLMMessage) (<-chan goai.StreamingLLMResponse, error) {
+// GenerateStream implements the Service interface
+func (s *ServiceImpl) GenerateStream(ctx context.Context, messages []goai.LLMMessage) (<-chan goai.StreamingLLMResponse, error) {
 	llm := goai.NewLLMRequest(s.config, s.provider)
 	return llm.GenerateStream(ctx, messages)
 }

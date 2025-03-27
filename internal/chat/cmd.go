@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	initPkg "github.com/shaharia-lab/echoy/internal/init"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/shaharia-lab/goai"
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ func startChatSession(theme theme.Theme) error {
 		return fmt.Errorf("error loading configuration: %w", err)
 	}
 
-	llmService, err := NewLLMService(cfg.LLM)
+	llmService, err := llm.NewLLMService(cfg.LLM)
 	if err != nil {
 		return fmt.Errorf("error initializing LLM service: %w", err)
 	}
