@@ -36,7 +36,7 @@ func main() {
 	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd(container)
+	rootCmd := cmd.NewRootCmd(appCfg, container.Logger, container.ThemeMgr)
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr),
 		cmd.NewConfigCmd(appCfg, log),
