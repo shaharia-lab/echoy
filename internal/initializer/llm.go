@@ -118,7 +118,7 @@ func (i *Initializer) ConfigureLLM() error {
 	i.Config.LLM.Model = selectedModel
 	i.Config.LLM.Token = apiToken
 
-	var maxTokens int
+	var maxTokens int64
 	if i.Config.LLM.MaxTokens == 0 {
 		i.Config.LLM.MaxTokens = 1000
 	}
@@ -180,10 +180,24 @@ func (i *Initializer) ConfigureLLM() error {
 		return err
 	}
 
+	streaming := false
+	if i.Config.LLM.Streaming {
+		streaming = true
+	}
+
+	promptStreaming := &survey.Confirm{
+		Message: "Enable streaming mode?",
+		Default: streaming,
+		Help:    "Enables streaming mode for long-running conversations.",
+	}
+
+	err = survey.AskOne(promptStreaming, &streaming)
+
 	i.Config.LLM.MaxTokens = maxTokens
 	i.Config.LLM.TopP = topP
 	i.Config.LLM.TopK = topK
 	i.Config.LLM.Temperature = temperature
+	i.Config.LLM.Streaming = streaming
 
 	return nil
 }

@@ -48,7 +48,8 @@ type LLMConfig struct {
 	Provider    string  `yaml:"provider"`
 	Model       string  `yaml:"model"`
 	Token       string  `yaml:"token"`
-	MaxTokens   int     `yaml:"max_tokens"`
+	MaxTokens   int64   `yaml:"max_tokens"`
+	Streaming   bool    `yaml:"streaming"`
 	TopP        float64 `yaml:"top_p"`
 	Temperature float64 `yaml:"temperature"`
 	TopK        int     `yaml:"top_k"`

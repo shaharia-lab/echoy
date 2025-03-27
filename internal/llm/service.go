@@ -26,11 +26,11 @@ func NewLLMService(llmConfig config.LLMConfig) (*ServiceImpl, error) {
 	if err != nil {
 		return nil, err
 	}
-	toolsProvider := goai.NewToolsProvider()
+
 	cfg := goai.NewRequestConfig(
-		goai.WithMaxToken(1000),
-		goai.WithTemperature(0.7),
-		goai.UseToolsProvider(toolsProvider),
+		goai.WithMaxToken(llmConfig.MaxTokens),
+		goai.WithTemperature(llmConfig.Temperature),
+		goai.UseToolsProvider(goai.NewToolsProvider()),
 	)
 
 	return &ServiceImpl{

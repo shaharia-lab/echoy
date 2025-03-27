@@ -40,6 +40,12 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	container := &Container{}
 	var err error
 
+	defer func() {
+		if container.Logger != nil {
+			defer container.Logger.Sync()
+		}
+	}()
+
 	if opts.Version == "" {
 		return nil, fmt.Errorf("version is required")
 	}
@@ -101,11 +107,13 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	container.ConfigManager = &initializer.DefaultConfigManager{}
 	cfg, err := container.ConfigManager.LoadConfig()
 	if err != nil {
+		container.Logger.Errorf(fmt.Sprintf("error loading configuration: %v", err))
 		return nil, fmt.Errorf("error loading configuration: %w", err)
 	}
 
 	container.LLMService, err = llm.NewLLMService(cfg.LLM)
 	if err != nil {
+		container.Logger.Errorf(fmt.Sprintf("error initializing LLM service: %v", err))
 		return nil, fmt.Errorf("error initializing LLM service: %w", err)
 	}
 
@@ -113,6 +121,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	container.ChatService = chat.NewChatService(container.LLMService, container.ChatHistoryService)
 	container.ChatSession, err = chat.NewChatSession(&cfg, container.ThemeMgr.GetCurrentTheme(), container.ChatService, container.ChatHistoryService)
 	if err != nil {
+		container.Logger.Errorf(fmt.Sprintf("error creating chat session: %v", err))
 		return nil, fmt.Errorf("error creating chat session: %w", err)
 	}
 
