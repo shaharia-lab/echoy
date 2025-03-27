@@ -8,31 +8,31 @@ import (
 // Theme defines the interface for theming in the application
 type Theme interface {
 	// Primary returns the primary style
-	Primary() *Style
+	Primary() StylePrinter
 
 	// Secondary returns the secondary style
-	Secondary() *Style
+	Secondary() StylePrinter
 
 	// Success returns the success style
-	Success() *Style
+	Success() StylePrinter
 
 	// Error returns the error style
-	Error() *Style
+	Error() StylePrinter
 
 	// Warning returns the warning style
-	Warning() *Style
+	Warning() StylePrinter
 
 	// Info returns the info style
-	Info() *Style
+	Info() StylePrinter
 
 	// Subtle returns the subtle style
-	Subtle() *Style
+	Subtle() StylePrinter
 
 	// Disabled returns the disabled style
-	Disabled() *Style
+	Disabled() StylePrinter
 
 	// Custom returns a custom style by name
-	Custom(name string) *Style
+	Custom(name string) StylePrinter
 
 	// IsEnabled reports if colors are enabled
 	IsEnabled() bool
@@ -158,55 +158,69 @@ func NewCorporateTheme() *DefaultTheme {
 }
 
 // Primary returns the primary style
-func (t *DefaultTheme) Primary() *Style {
+func (t *DefaultTheme) Primary() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.primary
 }
 
 // Secondary returns the secondary style
-func (t *DefaultTheme) Secondary() *Style {
+func (t *DefaultTheme) Secondary() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.secondary
 }
 
 // Success returns the success style
-func (t *DefaultTheme) Success() *Style {
+func (t *DefaultTheme) Success() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.success
 }
 
 // Error returns the error style
-func (t *DefaultTheme) Error() *Style {
+func (t *DefaultTheme) Error() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.error
 }
 
 // Warning returns the warning style
-func (t *DefaultTheme) Warning() *Style {
+func (t *DefaultTheme) Warning() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.warning
 }
 
 // Info returns the info style
-func (t *DefaultTheme) Info() *Style {
+func (t *DefaultTheme) Info() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.info
 }
 
 // Subtle returns the subtle style
-func (t *DefaultTheme) Subtle() *Style {
+func (t *DefaultTheme) Subtle() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.subtle
 }
 
 // Disabled returns the disabled style
-func (t *DefaultTheme) Disabled() *Style {
+func (t *DefaultTheme) Disabled() StylePrinter {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.disabled
 }
 
 // Custom returns a custom style by name
-func (t *DefaultTheme) Custom(name string) *Style {
+func (t *DefaultTheme) Custom(name string) StylePrinter {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-
-	style, ok := t.custom[name]
-	if !ok {
-		return t.info // Fallback to info style if custom not found
+	if style, ok := t.custom[name]; ok {
+		return style
 	}
-	return style
+	return t.info // Fallback to info style if the custom style doesn't exist
 }
 
 // RegisterCustomStyle registers a new custom style

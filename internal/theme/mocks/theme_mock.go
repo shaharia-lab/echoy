@@ -21,19 +21,19 @@ func (_m *MockTheme) EXPECT() *MockTheme_Expecter {
 }
 
 // Custom provides a mock function with given fields: name
-func (_m *MockTheme) Custom(name string) *theme.Style {
+func (_m *MockTheme) Custom(name string) theme.StylePrinter {
 	ret := _m.Called(name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Custom")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func(string) *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func(string) theme.StylePrinter); ok {
 		r0 = rf(name)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -58,30 +58,30 @@ func (_c *MockTheme_Custom_Call) Run(run func(name string)) *MockTheme_Custom_Ca
 	return _c
 }
 
-func (_c *MockTheme_Custom_Call) Return(_a0 *theme.Style) *MockTheme_Custom_Call {
+func (_c *MockTheme_Custom_Call) Return(_a0 theme.StylePrinter) *MockTheme_Custom_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Custom_Call) RunAndReturn(run func(string) *theme.Style) *MockTheme_Custom_Call {
+func (_c *MockTheme_Custom_Call) RunAndReturn(run func(string) theme.StylePrinter) *MockTheme_Custom_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Disabled provides a mock function with no fields
-func (_m *MockTheme) Disabled() *theme.Style {
+func (_m *MockTheme) Disabled() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Disabled")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -105,30 +105,30 @@ func (_c *MockTheme_Disabled_Call) Run(run func()) *MockTheme_Disabled_Call {
 	return _c
 }
 
-func (_c *MockTheme_Disabled_Call) Return(_a0 *theme.Style) *MockTheme_Disabled_Call {
+func (_c *MockTheme_Disabled_Call) Return(_a0 theme.StylePrinter) *MockTheme_Disabled_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Disabled_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Disabled_Call {
+func (_c *MockTheme_Disabled_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Disabled_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Error provides a mock function with no fields
-func (_m *MockTheme) Error() *theme.Style {
+func (_m *MockTheme) Error() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Error")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -152,30 +152,30 @@ func (_c *MockTheme_Error_Call) Run(run func()) *MockTheme_Error_Call {
 	return _c
 }
 
-func (_c *MockTheme_Error_Call) Return(_a0 *theme.Style) *MockTheme_Error_Call {
+func (_c *MockTheme_Error_Call) Return(_a0 theme.StylePrinter) *MockTheme_Error_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Error_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Error_Call {
+func (_c *MockTheme_Error_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Error_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Info provides a mock function with no fields
-func (_m *MockTheme) Info() *theme.Style {
+func (_m *MockTheme) Info() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Info")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -199,12 +199,12 @@ func (_c *MockTheme_Info_Call) Run(run func()) *MockTheme_Info_Call {
 	return _c
 }
 
-func (_c *MockTheme_Info_Call) Return(_a0 *theme.Style) *MockTheme_Info_Call {
+func (_c *MockTheme_Info_Call) Return(_a0 theme.StylePrinter) *MockTheme_Info_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Info_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Info_Call {
+func (_c *MockTheme_Info_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Info_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -255,19 +255,19 @@ func (_c *MockTheme_IsEnabled_Call) RunAndReturn(run func() bool) *MockTheme_IsE
 }
 
 // Primary provides a mock function with no fields
-func (_m *MockTheme) Primary() *theme.Style {
+func (_m *MockTheme) Primary() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Primary")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -291,30 +291,30 @@ func (_c *MockTheme_Primary_Call) Run(run func()) *MockTheme_Primary_Call {
 	return _c
 }
 
-func (_c *MockTheme_Primary_Call) Return(_a0 *theme.Style) *MockTheme_Primary_Call {
+func (_c *MockTheme_Primary_Call) Return(_a0 theme.StylePrinter) *MockTheme_Primary_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Primary_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Primary_Call {
+func (_c *MockTheme_Primary_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Primary_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Secondary provides a mock function with no fields
-func (_m *MockTheme) Secondary() *theme.Style {
+func (_m *MockTheme) Secondary() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Secondary")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -338,12 +338,12 @@ func (_c *MockTheme_Secondary_Call) Run(run func()) *MockTheme_Secondary_Call {
 	return _c
 }
 
-func (_c *MockTheme_Secondary_Call) Return(_a0 *theme.Style) *MockTheme_Secondary_Call {
+func (_c *MockTheme_Secondary_Call) Return(_a0 theme.StylePrinter) *MockTheme_Secondary_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Secondary_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Secondary_Call {
+func (_c *MockTheme_Secondary_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Secondary_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -382,19 +382,19 @@ func (_c *MockTheme_SetEnabled_Call) RunAndReturn(run func(bool)) *MockTheme_Set
 }
 
 // Subtle provides a mock function with no fields
-func (_m *MockTheme) Subtle() *theme.Style {
+func (_m *MockTheme) Subtle() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Subtle")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -418,30 +418,30 @@ func (_c *MockTheme_Subtle_Call) Run(run func()) *MockTheme_Subtle_Call {
 	return _c
 }
 
-func (_c *MockTheme_Subtle_Call) Return(_a0 *theme.Style) *MockTheme_Subtle_Call {
+func (_c *MockTheme_Subtle_Call) Return(_a0 theme.StylePrinter) *MockTheme_Subtle_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Subtle_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Subtle_Call {
+func (_c *MockTheme_Subtle_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Subtle_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Success provides a mock function with no fields
-func (_m *MockTheme) Success() *theme.Style {
+func (_m *MockTheme) Success() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Success")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -465,30 +465,30 @@ func (_c *MockTheme_Success_Call) Run(run func()) *MockTheme_Success_Call {
 	return _c
 }
 
-func (_c *MockTheme_Success_Call) Return(_a0 *theme.Style) *MockTheme_Success_Call {
+func (_c *MockTheme_Success_Call) Return(_a0 theme.StylePrinter) *MockTheme_Success_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Success_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Success_Call {
+func (_c *MockTheme_Success_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Success_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Warning provides a mock function with no fields
-func (_m *MockTheme) Warning() *theme.Style {
+func (_m *MockTheme) Warning() theme.StylePrinter {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Warning")
 	}
 
-	var r0 *theme.Style
-	if rf, ok := ret.Get(0).(func() *theme.Style); ok {
+	var r0 theme.StylePrinter
+	if rf, ok := ret.Get(0).(func() theme.StylePrinter); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*theme.Style)
+			r0 = ret.Get(0).(theme.StylePrinter)
 		}
 	}
 
@@ -512,12 +512,12 @@ func (_c *MockTheme_Warning_Call) Run(run func()) *MockTheme_Warning_Call {
 	return _c
 }
 
-func (_c *MockTheme_Warning_Call) Return(_a0 *theme.Style) *MockTheme_Warning_Call {
+func (_c *MockTheme_Warning_Call) Return(_a0 theme.StylePrinter) *MockTheme_Warning_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockTheme_Warning_Call) RunAndReturn(run func() *theme.Style) *MockTheme_Warning_Call {
+func (_c *MockTheme_Warning_Call) RunAndReturn(run func() theme.StylePrinter) *MockTheme_Warning_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -7,6 +7,13 @@ import (
 	"os"
 )
 
+// StylePrinter defines an interface for printing styled text
+type StylePrinter interface {
+	Print(a ...interface{})
+	Printf(format string, a ...interface{})
+	Println(a ...interface{})
+}
+
 // Style represents a named color style
 type Style struct {
 	fg      color.Attribute
@@ -57,7 +64,7 @@ func (s *Style) Printf(format string, a ...interface{}) {
 	if s.writer == os.Stdout {
 		s.printer.Printf(format, a...)
 	} else {
-		fmt.Fprintf(s.writer, s.sprintf(format, a...))
+		fmt.Fprint(s.writer, s.sprintf(format, a...))
 	}
 }
 
