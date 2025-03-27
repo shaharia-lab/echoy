@@ -10,14 +10,26 @@ import (
 type Manager struct {
 	currentTheme Theme
 	appConfig    *config.AppConfig
+	writer       Writer
 }
 
 // NewManager creates a new theme manager with default settings
-func NewManager(t Theme, appConfig *config.AppConfig) *Manager {
+func NewManager(t Theme, appConfig *config.AppConfig, writer Writer) *Manager {
+	if writer == nil {
+		writer = &StdoutWriter{}
+	}
+
 	return &Manager{
 		currentTheme: t,
 		appConfig:    appConfig,
+		writer:       writer,
 	}
+}
+
+// WithWriter sets a custom writer for the manager
+func (m *Manager) WithWriter(w Writer) *Manager {
+	m.writer = w
+	return m
 }
 
 // GetCurrentTheme returns the currently active theme

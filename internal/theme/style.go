@@ -1,6 +1,11 @@
 package theme
 
-import "github.com/fatih/color"
+import (
+	"fmt"
+	"github.com/fatih/color"
+	"io"
+	"os"
+)
 
 // Style represents a named color style
 type Style struct {
@@ -8,6 +13,7 @@ type Style struct {
 	bg      color.Attribute
 	attrs   []color.Attribute
 	printer *color.Color
+	writer  io.Writer
 }
 
 // NewStyle creates a new style with foreground, background and attributes
@@ -27,35 +33,49 @@ func NewStyle(fg, bg color.Attribute, attrs ...color.Attribute) *Style {
 		bg:      bg,
 		attrs:   attrs,
 		printer: c,
+		writer:  os.Stdout,
 	}
+}
+
+// WithWriter sets a custom writer for the style
+func (s *Style) WithWriter(w io.Writer) *Style {
+	s.writer = w
+	return s
 }
 
 // Print prints text using the style
 func (s *Style) Print(a ...interface{}) {
-	s.printer.Print(a...)
+	if s.writer == os.Stdout {
+		s.printer.Print(a...)
+	} else {
+		fmt.Fprint(s.writer, s.sprint(a...))
+	}
 }
 
 // Printf prints formatted text using the style
 func (s *Style) Printf(format string, a ...interface{}) {
-	s.printer.Printf(format, a...)
+	if s.writer == os.Stdout {
+		s.printer.Printf(format, a...)
+	} else {
+		fmt.Fprintf(s.writer, s.sprintf(format, a...))
+	}
 }
 
 // Println prints text using the style followed by a newline
 func (s *Style) Println(a ...interface{}) {
-	s.printer.Println(a...)
+	if s.writer == os.Stdout {
+		s.printer.Println(a...)
+	} else {
+		fmt.Fprintln(s.writer, s.sprint(a...))
+	}
 }
 
-// Sprint returns styled text as string
-func (s *Style) Sprint(a ...interface{}) string {
+// sprint returns styled text as string
+func (s *Style) sprint(a ...interface{}) string {
 	return s.printer.Sprint(a...)
 }
 
 // Sprintf returns styled formatted text as string
-func (s *Style) Sprintf(format string, a ...interface{}) string {
+func (s *Style) sprintf(format string, a ...interface{}) string {
 	return s.printer.Sprintf(format, a...)
-}
-
-// Sprintln returns styled text with newline as string
-func (s *Style) Sprintln(a ...interface{}) string {
-	return s.printer.Sprintln(a...)
 }
