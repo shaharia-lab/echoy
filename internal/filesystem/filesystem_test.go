@@ -45,8 +45,8 @@ func TestEnsureAppDirectory(t *testing.T) {
 
 	fs := NewAppFilesystem(appCfg)
 
-	appDir, err := fs.EnsureAppDirectory()
-	assert.NoError(t, err, "EnsureAppDirectory should not return an error")
+	appDir, err := fs.ensureAppDirectory()
+	assert.NoError(t, err, "ensureAppDirectory should not return an error")
 	assert.NotEmpty(t, appDir, "App directory should not be empty")
 
 	expectedPath := filepath.Join(tempHome, ".testapp")
@@ -56,8 +56,8 @@ func TestEnsureAppDirectory(t *testing.T) {
 	assert.NoError(t, err, "Should be able to stat the app directory")
 	assert.True(t, info.IsDir(), "App path should be a directory")
 
-	appDirAgain, err := fs.EnsureAppDirectory()
-	assert.NoError(t, err, "Second call to EnsureAppDirectory should not return an error")
+	appDirAgain, err := fs.ensureAppDirectory()
+	assert.NoError(t, err, "Second call to ensureAppDirectory should not return an error")
 	assert.Equal(t, appDir, appDirAgain, "App directory path should be the same on second call")
 }
 
@@ -133,8 +133,8 @@ func TestCreateSQLiteDBFile(t *testing.T) {
 	fs := NewAppFilesystem(appCfg)
 
 	dbFileName := "test.db"
-	dbPath, err := fs.CreateSQLiteDBFile(tempDir, dbFileName)
-	assert.NoError(t, err, "CreateSQLiteDBFile should not return an error")
+	dbPath, err := fs.createChatHistoryDBFile(tempDir, dbFileName)
+	assert.NoError(t, err, "createChatHistoryDBFile should not return an error")
 	assert.NotEmpty(t, dbPath, "DB path should not be empty")
 
 	expectedPath := filepath.Join(tempDir, dbFileName)
@@ -144,8 +144,8 @@ func TestCreateSQLiteDBFile(t *testing.T) {
 	assert.NoError(t, err, "Should be able to stat the DB file")
 	assert.False(t, info.IsDir(), "DB path should be a file")
 
-	dbPathAgain, err := fs.CreateSQLiteDBFile(tempDir, dbFileName)
-	assert.NoError(t, err, "Second call to CreateSQLiteDBFile should not return an error")
+	dbPathAgain, err := fs.createChatHistoryDBFile(tempDir, dbFileName)
+	assert.NoError(t, err, "Second call to createChatHistoryDBFile should not return an error")
 	assert.Equal(t, dbPath, dbPathAgain, "DB path should be the same on second call")
 }
 
@@ -165,6 +165,6 @@ func TestErrorConditions(t *testing.T) {
 
 	fs := NewAppFilesystem(appCfg)
 
-	_, err := fs.CreateSQLiteDBFile(readOnlyDir, "test.db")
+	_, err := fs.createChatHistoryDBFile(readOnlyDir, "test.db")
 	assert.Error(t, err, "Creating DB file in read-only directory should fail")
 }

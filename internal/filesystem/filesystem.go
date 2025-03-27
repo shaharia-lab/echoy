@@ -12,37 +12,56 @@ import (
 	"strings"
 )
 
+// PathType represents a type of path
 type PathType string
 
 const (
 	configYamlFileName = "config.yaml"
 
-	AppDirectory    PathType = "app"
-	CacheDirectory  PathType = "cache"
+	// AppDirectory represents the application directory
+	AppDirectory PathType = "app"
+
+	// CacheDirectory represents the cache directory
+	CacheDirectory PathType = "cache"
+
+	// ConfigDirectory represents the config directory
 	ConfigDirectory PathType = "config"
-	ConfigFilePath  PathType = "config_file"
-	LogsDirectory   PathType = "logs"
-	LogsFilePath    PathType = "log_file"
-	DataDirectory   PathType = "data"
-	ChatHistoryDB   PathType = "chat_history_db"
+
+	// ConfigFilePath represents the config file path
+	ConfigFilePath PathType = "config_file"
+
+	// LogsDirectory represents the logs directory
+	LogsDirectory PathType = "logs"
+
+	// LogsFilePath represents the logs file path
+	LogsFilePath PathType = "log_file"
+
+	// DataDirectory represents the data directory
+	DataDirectory PathType = "data"
+
+	// ChatHistoryDB represents the chat history database
+	ChatHistoryDB PathType = "chat_history_db"
 )
 
+// Filesystem provides filesystem related operations
 type Filesystem struct {
 	logger *logrus.Logger
 	appCfg *config.AppConfig
 	paths  map[PathType]string
 }
 
+// NewAppFilesystem creates a new filesystem instance
 func NewAppFilesystem(appCfg *config.AppConfig) *Filesystem {
 	return &Filesystem{
 		appCfg: appCfg,
 	}
 }
 
+// EnsureAllPaths ensures all required paths exist
 func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	paths := map[PathType]string{}
 
-	appDirectory, err := s.EnsureAppDirectory()
+	appDirectory, err := s.ensureAppDirectory()
 	if err != nil {
 		return paths, err
 	}
@@ -80,7 +99,7 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[DataDirectory] = dataDir
 
-	chatHistoryDBFilePath, err := s.CreateSQLiteDBFile(dataDir, "chat_history.db")
+	chatHistoryDBFilePath, err := s.createChatHistoryDBFile(dataDir, "chat_history.db")
 	if err != nil {
 		return paths, err
 	}
@@ -105,7 +124,7 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	return paths, nil
 }
 
-func (s *Filesystem) EnsureAppDirectory() (string, error) {
+func (s *Filesystem) ensureAppDirectory() (string, error) {
 	homeDir, err := s.getUserHomeDirectory()
 	if err != nil {
 		return "", err
@@ -122,7 +141,7 @@ func (s *Filesystem) EnsureAppDirectory() (string, error) {
 	return appDir, nil
 }
 
-func (s *Filesystem) CreateSQLiteDBFile(dataDirectory, fileName string) (string, error) {
+func (s *Filesystem) createChatHistoryDBFile(dataDirectory, fileName string) (string, error) {
 	dbFilePath := filepath.Join(dataDirectory, fileName)
 	if _, err := os.Stat(dbFilePath); err == nil {
 		return dbFilePath, nil
