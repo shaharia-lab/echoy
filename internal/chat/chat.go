@@ -83,14 +83,52 @@ func (s *ServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID, me
 		return nil, fmt.Errorf("failed to add message to chat history: %w", err)
 	}
 
-	responseChan, err := s.llmService.GenerateStream(ctx, []goai.LLMMessage{userMessage})
+	sourceChan, err := s.llmService.GenerateStream(ctx, []goai.LLMMessage{userMessage})
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate streaming response: %w", err)
 	}
 
-	go s.processStreamingResponse(ctx, sessionID, responseChan)
+	// Create a new channel to broadcast responses
+	resultChan := make(chan goai.StreamingLLMResponse)
 
-	return responseChan, nil
+	go func() {
+		defer close(resultChan)
+
+		var completeResponse string
+
+		for streamingResp := range sourceChan {
+			// Forward each response to our result channel
+			select {
+			case resultChan <- streamingResp:
+				// Message forwarded
+			case <-ctx.Done():
+				return
+			}
+
+			// Process for history
+			if streamingResp.Error != nil {
+				continue
+			}
+
+			completeResponse += streamingResp.Text
+
+			if streamingResp.Done {
+				// Save complete response to history
+				err := s.historyService.AddMessage(ctx, sessionID, goai.ChatHistoryMessage{
+					LLMMessage: goai.LLMMessage{
+						Role: goai.AssistantRole,
+						Text: completeResponse,
+					},
+					GeneratedAt: time.Now().UTC(),
+				})
+				if err != nil {
+					fmt.Printf("Failed to save complete streaming response: %v\n", err)
+				}
+			}
+		}
+	}()
+
+	return resultChan, nil
 }
 
 // processStreamingResponse collects the streaming response and saves it to history
@@ -101,7 +139,12 @@ func (s *ServiceImpl) processStreamingResponse(ctx context.Context, sessionID uu
 		if streamingResp.Error != nil {
 			continue
 		}
+
 		completeResponse += streamingResp.Text
+
+		if streamingResp.Done {
+			break
+		}
 	}
 
 	err := s.historyService.AddMessage(ctx, sessionID, goai.ChatHistoryMessage{
