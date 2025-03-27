@@ -40,7 +40,7 @@ func main() {
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr),
 		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(container),
+		chat.NewChatCmd(container.Config, container.ChatSession),
 		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)
 

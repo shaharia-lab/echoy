@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
-	initPkg "github.com/shaharia-lab/echoy/internal/init"
+	initPkg "github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"

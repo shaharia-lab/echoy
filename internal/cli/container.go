@@ -2,19 +2,28 @@ package cli
 
 import (
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/filesystem"
+	"github.com/shaharia-lab/echoy/internal/initializer"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	"github.com/shaharia-lab/goai"
 )
 
 // Container holds all application dependencies
 type Container struct {
-	Config     *config.AppConfig
-	Filesystem *filesystem.Filesystem
-	Paths      map[filesystem.PathType]string
-	Logger     *logger.Logger
-	ThemeMgr   *theme.Manager
+	Config             *config.AppConfig
+	Filesystem         *filesystem.Filesystem
+	Paths              map[filesystem.PathType]string
+	Logger             *logger.Logger
+	ThemeMgr           *theme.Manager
+	ConfigManager      initializer.ConfigManager
+	LLMService         llm.Service
+	ChatHistoryService goai.ChatHistoryStorage
+	ChatSession        *chat.Session
+	ChatService        chat.Service
 }
 
 // InitOptions contains options for initialization
@@ -88,6 +97,24 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	}
 
 	container.Logger.Info("Logger initialized successfully")
+
+	container.ConfigManager = &initializer.DefaultConfigManager{}
+	cfg, err := container.ConfigManager.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error loading configuration: %w", err)
+	}
+
+	container.LLMService, err = llm.NewLLMService(cfg.LLM)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing LLM service: %w", err)
+	}
+
+	container.ChatHistoryService = goai.NewInMemoryChatHistoryStorage()
+	container.ChatService = chat.NewChatService(container.LLMService, container.ChatHistoryService)
+	container.ChatSession, err = chat.NewChatSession(&cfg, container.ThemeMgr.GetCurrentTheme(), container.ChatService, container.ChatHistoryService)
+	if err != nil {
+		return nil, fmt.Errorf("error creating chat session: %w", err)
+	}
 
 	return container, nil
 }

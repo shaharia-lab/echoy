@@ -1,4 +1,4 @@
-package init
+package initializer
 
 import (
 	"github.com/AlecAivazis/survey/v2"

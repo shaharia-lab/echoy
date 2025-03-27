@@ -1,4 +1,4 @@
-package init
+package initializer
 
 import (
 	"github.com/shaharia-lab/echoy/internal/config"
