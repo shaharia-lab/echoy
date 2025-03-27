@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
-	initPkg "github.com/shaharia-lab/echoy/internal/initializer"
+	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
@@ -17,8 +17,8 @@ func NewInitCmd(config *config.AppConfig, logger *logger.Logger, themeManager *t
 		Short:   "Initialize the Echoy with a guided setup",
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			initializer := initPkg.NewInitializer(logger, config, themeManager)
-			if err := initializer.Run(); err != nil {
+			init := initializer.NewInitializer(logger, config, themeManager)
+			if err := init.Run(); err != nil {
 				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
