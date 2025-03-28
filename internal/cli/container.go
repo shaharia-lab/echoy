@@ -112,6 +112,12 @@ func NewContainer(opts InitOptions) (*Container, error) {
 				container.ThemeMgr.GetCurrentTheme().Subtle().Println(e.Error())
 			}
 		}
+
+		container.Logger.Sync()
+
+		if !configExists {
+			container.Initializer.Run()
+		}
 	}()
 
 	loggerConfig := logger.Config{
