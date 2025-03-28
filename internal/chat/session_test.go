@@ -172,7 +172,8 @@ func TestProcessMessageStreaming(t *testing.T) {
 
 	sessionUUID := uuid.New()
 
-	// Create a flag to ensure the thinking function was called
+	// Create synchronized access to the flag
+	var thinkingMutex sync.Mutex
 	thinkingCalled := false
 
 	session := &Session{
@@ -182,7 +183,10 @@ func TestProcessMessageStreaming(t *testing.T) {
 		chatHistoryService: mockHistoryService,
 		sessionID:          sessionUUID,
 		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
+			thinkingMutex.Lock()
 			thinkingCalled = true
+			thinkingMutex.Unlock()
+
 			// Simple implementation that just waits for the channel to close
 			for range ch {
 				// Just consume any signals
@@ -228,39 +232,59 @@ func TestProcessMessageStreaming(t *testing.T) {
 	select {
 	case err := <-errChan:
 		assert.NoError(t, err)
-		assert.True(t, thinkingCalled, "Thinking animation function should be called")
+
+		// Check the flag with synchronization
+		thinkingMutex.Lock()
+		called := thinkingCalled
+		thinkingMutex.Unlock()
+
+		assert.True(t, called, "Thinking animation function should be called")
 	case <-time.After(2 * time.Second):
 		t.Fatal("Test timed out")
 	}
 }
 
 func TestProcessMessageStreaming_InitialError(t *testing.T) {
+	// Create a session with minimal configuration
 	mockConfig := &config.Config{}
-	mockTheme := mocks.NewMockTheme(t)
+	mockTheme := setupMockTheme(t)
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
 	sessionUUID := uuid.New()
+
 	session := &Session{
 		config:             mockConfig,
 		theme:              mockTheme,
 		chatService:        mockChatService,
 		chatHistoryService: mockHistoryService,
 		sessionID:          sessionUUID,
+		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
+			// Simple implementation that just waits for the channel
+			select {
+			case <-ch:
+				// Just consume one signal
+			case <-time.After(100 * time.Millisecond):
+				return
+			}
+		},
 	}
 
 	ctx := context.Background()
 	input := "test input"
-	expectedErr := errors.New("streaming error")
 
+	// Set up an error expectation
+	testErr := errors.New("test error")
 	mockChatService.EXPECT().
 		ChatStreaming(ctx, sessionUUID, input).
-		Return(nil, expectedErr)
+		Return(nil, testErr)
 
+	// Call the method directly
 	err := session.processMessageStreaming(ctx, input)
 
+	// Assert the error contains our original error message
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), expectedErr.Error())
+	assert.Contains(t, err.Error(), testErr.Error())
 }
 
 func TestProcessMessageStreaming_ResponseError(t *testing.T) {
