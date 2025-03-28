@@ -16,13 +16,14 @@ import (
 
 // Session represents an interactive chat session
 type Session struct {
-	config             *config.Config
-	theme              theme.Theme
-	chatService        Service
-	chatHistoryStorage goai.ChatHistoryStorage
-	sessionID          uuid.UUID
-	reader             *bufio.Reader
-	chatHistoryService HistoryService
+	config                *config.Config
+	theme                 theme.Theme
+	chatService           Service
+	chatHistoryStorage    goai.ChatHistoryStorage
+	sessionID             uuid.UUID
+	reader                *bufio.Reader
+	chatHistoryService    HistoryService
+	thinkingAnimationFunc func(theme theme.Theme, thinking chan bool)
 }
 
 // NewChatSession creates and configures a new chat session
@@ -35,12 +36,13 @@ func NewChatSession(config *config.Config, theme theme.Theme, chatService Servic
 	}
 
 	return &Session{
-		config:             config,
-		theme:              theme,
-		chatService:        chatService,
-		chatHistoryService: chatHistoryService,
-		sessionID:          sessionID.UUID,
-		reader:             bufio.NewReader(os.Stdin),
+		config:                config,
+		theme:                 theme,
+		chatService:           chatService,
+		chatHistoryService:    chatHistoryService,
+		sessionID:             sessionID.UUID,
+		reader:                bufio.NewReader(os.Stdin),
+		thinkingAnimationFunc: showThinkingAnimation,
 	}, nil
 }
 
@@ -61,6 +63,14 @@ func (s *Session) Start(ctx context.Context) error {
 
 		if strings.ToLower(input) == "clear" {
 			fmt.Print("\033[H\033[2J")
+			continue
+		}
+
+		if s.config.LLM.Streaming {
+			if err := s.processMessageStreaming(ctx, input); err != nil {
+				return err
+			}
+
 			continue
 		}
 
@@ -114,11 +124,14 @@ func (s *Session) readUserInput() (string, error) {
 }
 
 func (s *Session) processMessage(ctx context.Context, input string) error {
-	thinking := make(chan bool)
-	s.showThinkingAnimation(thinking)
+	thinking := make(chan bool, 1)
+	defer close(thinking)
+
+	go s.thinkingAnimationFunc(s.theme, thinking)
 
 	response, err := s.chatService.Chat(ctx, s.sessionID, input)
 	if err != nil {
+		thinking <- true
 		return fmt.Errorf("error processing chat input: %w", err)
 	}
 
@@ -131,7 +144,41 @@ func (s *Session) processMessage(ctx context.Context, input string) error {
 	return nil
 }
 
-func (s *Session) showThinkingAnimation(thinking chan bool) {
+func (s *Session) processMessageStreaming(ctx context.Context, input string) error {
+	thinking := make(chan bool, 1)
+	defer close(thinking)
+
+	go s.thinkingAnimationFunc(s.theme, thinking)
+
+	streamChan, err := s.chatService.ChatStreaming(ctx, s.sessionID, input)
+	if err != nil {
+		thinking <- true
+		return fmt.Errorf("error processing chat input: %w", err)
+	}
+
+	firstToken := true
+	s.theme.Secondary().Print("AI > ")
+
+	for streamResp := range streamChan {
+		if firstToken {
+			thinking <- true
+			fmt.Print("\r                \r")
+			s.theme.Secondary().Print("AI > ")
+			firstToken = false
+		}
+
+		if streamResp.Error != nil {
+			return fmt.Errorf("error in streaming response: %w", streamResp.Error)
+		}
+
+		s.theme.Subtle().Print(streamResp.Text)
+	}
+
+	fmt.Println()
+	return nil
+}
+
+func showThinkingAnimation(theme theme.Theme, thinking chan bool) {
 	go func() {
 		dots := []string{".  ", ".. ", "..."}
 		i := 0
@@ -140,7 +187,7 @@ func (s *Session) showThinkingAnimation(thinking chan bool) {
 			case <-thinking:
 				return
 			default:
-				s.theme.Warning().Printf("\rThinking%s", dots[i%3])
+				theme.Warning().Printf("\rThinking%s", dots[i%3])
 				i++
 				time.Sleep(300 * time.Millisecond)
 			}

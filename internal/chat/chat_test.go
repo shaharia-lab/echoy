@@ -13,7 +13,6 @@ import (
 )
 
 func TestServiceImpl_Chat(t *testing.T) {
-
 	testCases := []struct {
 		name                  string
 		sessionID             uuid.UUID
@@ -57,7 +56,6 @@ func TestServiceImpl_Chat(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			mockHistoryService := new(mocks.MockHistoryService)
 			mockLLMService := new(mocks.MockLLMService)
 
