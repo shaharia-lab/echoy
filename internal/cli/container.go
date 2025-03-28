@@ -93,6 +93,27 @@ func NewContainer(opts InitOptions) (*Container, error) {
 		return nil, fmt.Errorf("config file path is required")
 	}
 
+	var errs []error
+	var configExists bool
+	defer func() {
+		container.ThemeMgr.DisplayBanner(
+			fmt.Sprintf("Welcome to %s", container.Config.Name),
+			40,
+			"Your AI assistant for the CLI")
+
+		if !configExists {
+			container.ThemeMgr.GetCurrentTheme().Error().Println("> Configuration not found. Please run 'echoy init' to set up.")
+		}
+
+		for _, e := range errs {
+			container.Logger.Error(e.Error())
+
+			if configExists {
+				container.ThemeMgr.GetCurrentTheme().Subtle().Println(e.Error())
+			}
+		}
+	}()
+
 	loggerConfig := logger.Config{
 		FilePath: container.Paths[filesystem.LogsFilePath],
 		LogLevel: opts.LogLevel,
@@ -106,6 +127,13 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	container.Logger.Info("Logger initialized successfully")
 
 	container.ConfigManager = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath])
+	if !container.ConfigManager.ConfigExists() {
+		container.Logger.Info("Configuration not found. Please run 'echoy init' to set up.")
+		errs = append(errs, fmt.Errorf("configuration not found"))
+		configExists = false
+		return nil, fmt.Errorf("configuration not found")
+	}
+
 	cfg, err := container.ConfigManager.LoadConfig()
 	if err != nil {
 		container.Logger.Errorf(fmt.Sprintf("error loading configuration: %v", err))
@@ -113,10 +141,10 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	}
 
 	container.Initializer = initializer.NewInitializer(container.Logger, container.Config, container.ThemeMgr, container.ConfigManager)
-
 	container.LLMService, err = llm.NewLLMService(cfg.LLM)
 	if err != nil {
 		container.Logger.Errorf(fmt.Sprintf("error initializing LLM service: %v", err))
+		errs = append(errs, fmt.Errorf("error initializing LLM service: %w", err))
 		return nil, fmt.Errorf("error initializing LLM service: %w", err)
 	}
 

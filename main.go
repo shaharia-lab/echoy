@@ -24,8 +24,7 @@ func main() {
 	})
 
 	if err != nil {
-		fmt.Printf("failed to initialize container: %v\n", err)
-		os.Exit(1)
+		return
 	}
 
 	log := container.Logger

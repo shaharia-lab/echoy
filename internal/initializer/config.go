@@ -1,19 +1,21 @@
 package initializer
 
 import (
+	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"gopkg.in/yaml.v3"
 	"os"
 )
 
-// Implementation of ConfigManager interface
-
 // LoadConfig loads the existing configuration
 func (cm *DefaultConfigManager) LoadConfig() (config.Config, error) {
 	var cfg config.Config
 
-	configPath := config.GetConfigPath()
-	configFile, err := os.ReadFile(configPath)
+	if cm.configFilePath == "" {
+		return cfg, fmt.Errorf("config file path not set")
+	}
+
+	configFile, err := os.ReadFile(cm.configFilePath)
 	if err != nil {
 		return cfg, err
 	}
@@ -27,20 +29,16 @@ func (cm *DefaultConfigManager) LoadConfig() (config.Config, error) {
 
 // SaveConfig saves the configuration to disk
 func (cm *DefaultConfigManager) SaveConfig(cfg config.Config) error {
-	// Ensure config directory exists
-	if err := config.EnsureConfigDir(); err != nil {
-		return err
+	if cm.configFilePath == "" {
+		return fmt.Errorf("config file path not set")
 	}
 
-	// Marshal config to YAML
 	yamlData, err := yaml.Marshal(&cfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	// Write config file
-	configPath := config.GetConfigPath()
-	return os.WriteFile(configPath, yamlData, 0644)
+	return os.WriteFile(cm.configFilePath, yamlData, 0644)
 }
 
 // ConfigExists checks if a configuration file already exists
