@@ -140,11 +140,8 @@ func TestProcessMessage_Error(t *testing.T) {
 		chatService:        mockChatService,
 		chatHistoryService: mockHistoryService,
 		sessionID:          sessionUUID,
-		// Add a non-nil thinking animation function
 		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
-			// Simple implementation that just waits for channel signals
 			for range ch {
-				// Just consume any signals
 			}
 		},
 	}
@@ -164,7 +161,6 @@ func TestProcessMessage_Error(t *testing.T) {
 }
 
 func TestProcessMessageStreaming(t *testing.T) {
-	// Create a session with minimal configuration
 	mockConfig := &config.Config{}
 	mockTheme := setupMockTheme(t)
 	mockChatService := chatMock.NewMockService(t)
@@ -172,7 +168,6 @@ func TestProcessMessageStreaming(t *testing.T) {
 
 	sessionUUID := uuid.New()
 
-	// Create synchronized access to the flag
 	var thinkingMutex sync.Mutex
 	thinkingCalled := false
 
@@ -187,9 +182,7 @@ func TestProcessMessageStreaming(t *testing.T) {
 			thinkingCalled = true
 			thinkingMutex.Unlock()
 
-			// Simple implementation that just waits for the channel to close
 			for range ch {
-				// Just consume any signals
 			}
 		},
 	}
@@ -198,18 +191,15 @@ func TestProcessMessageStreaming(t *testing.T) {
 	input := "test input"
 	streamChan := make(chan goai.StreamingLLMResponse)
 
-	// Set expectations
 	mockChatService.EXPECT().
 		ChatStreaming(ctx, sessionUUID, input).
 		Return(streamChan, nil)
 
-	// Run the test function in a goroutine
 	errChan := make(chan error)
 	go func() {
 		errChan <- session.processMessageStreaming(ctx, input)
 	}()
 
-	// Send a couple of streaming responses
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 
@@ -228,12 +218,10 @@ func TestProcessMessageStreaming(t *testing.T) {
 		close(streamChan)
 	}()
 
-	// Wait for completion with timeout
 	select {
 	case err := <-errChan:
 		assert.NoError(t, err)
 
-		// Check the flag with synchronization
 		thinkingMutex.Lock()
 		called := thinkingCalled
 		thinkingMutex.Unlock()
@@ -245,7 +233,6 @@ func TestProcessMessageStreaming(t *testing.T) {
 }
 
 func TestProcessMessageStreaming_InitialError(t *testing.T) {
-	// Create a session with minimal configuration
 	mockConfig := &config.Config{}
 	mockTheme := setupMockTheme(t)
 	mockChatService := chatMock.NewMockService(t)
@@ -260,10 +247,8 @@ func TestProcessMessageStreaming_InitialError(t *testing.T) {
 		chatHistoryService: mockHistoryService,
 		sessionID:          sessionUUID,
 		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
-			// Simple implementation that just waits for the channel
 			select {
 			case <-ch:
-				// Just consume one signal
 			case <-time.After(100 * time.Millisecond):
 				return
 			}
@@ -273,16 +258,13 @@ func TestProcessMessageStreaming_InitialError(t *testing.T) {
 	ctx := context.Background()
 	input := "test input"
 
-	// Set up an error expectation
 	testErr := errors.New("test error")
 	mockChatService.EXPECT().
 		ChatStreaming(ctx, sessionUUID, input).
 		Return(nil, testErr)
 
-	// Call the method directly
 	err := session.processMessageStreaming(ctx, input)
 
-	// Assert the error contains our original error message
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), testErr.Error())
 }
@@ -290,10 +272,9 @@ func TestProcessMessageStreaming_InitialError(t *testing.T) {
 func TestProcessMessageStreaming_ResponseError(t *testing.T) {
 	session, mockChatService, _ := setupTestSession(t)
 
-	// Override the thinking animation function with a safer implementation
 	session.thinkingAnimationFunc = func(theme theme.Theme, ch chan bool) {
 		go func() {
-			<-ch // Just wait for one signal
+			<-ch
 		}()
 	}
 
@@ -306,7 +287,6 @@ func TestProcessMessageStreaming_ResponseError(t *testing.T) {
 		ChatStreaming(ctx, session.sessionID, input).
 		Return(streamingChan, nil)
 
-	// Use a wait group to ensure the test waits for the goroutine to finish
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -322,8 +302,7 @@ func TestProcessMessageStreaming_ResponseError(t *testing.T) {
 	}()
 
 	err := session.processMessageStreaming(ctx, input)
-	wg.Wait() // Wait for the goroutine to complete
-
+	wg.Wait()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), expectedErr.Error())
 }
@@ -343,12 +322,9 @@ func TestStart_StreamingEnabled(t *testing.T) {
 
 	sessionUUID := uuid.New()
 
-	// Create a custom reader for testing input - ensure it ends with "exit"
-	// The double newline after "Hello" is intentional to signal end of input for the first prompt
 	mockInput := "Hello\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))
 
-	// Set up mock expectations for theme methods
 	mockWriter := mocks.NewMockWriter(t)
 	mockTheme.EXPECT().Primary().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Secondary().Return(mockWriter).Maybe()
@@ -358,13 +334,11 @@ func TestStart_StreamingEnabled(t *testing.T) {
 	mockTheme.EXPECT().Error().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Subtle().Return(mockWriter).Maybe()
 
-	// Add explicit expectations for the actual calls that will happen
 	mockWriter.EXPECT().Println(mock.Anything, mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Println(mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Print(mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Printf(mock.Anything, mock.Anything).Return().Maybe()
 
-	// Let's look at how the sessions are properly initialized in other tests
 	session := &Session{
 		config:             mockConfig,
 		theme:              mockTheme,
@@ -372,14 +346,11 @@ func TestStart_StreamingEnabled(t *testing.T) {
 		chatHistoryService: mockHistoryService,
 		sessionID:          sessionUUID,
 		reader:             mockReader,
-		// Add the thinking animation function
 		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
 			go func() {
 				select {
 				case <-ch:
-					// Do nothing, just consume one signal
 				case <-time.After(100 * time.Millisecond):
-					// Timeout as a safety
 					return
 				}
 			}()
@@ -388,19 +359,16 @@ func TestStart_StreamingEnabled(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Mock expectations for the chat service
 	streamingChan := make(chan goai.StreamingLLMResponse)
 	mockChatService.EXPECT().
 		ChatStreaming(ctx, sessionUUID, "Hello").
 		Return(streamingChan, nil)
 
-	// Use a WaitGroup to coordinate between goroutines
 	var wg sync.WaitGroup
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
-		// Wait a bit before sending response
 		time.Sleep(100 * time.Millisecond)
 		streamingChan <- goai.StreamingLLMResponse{
 			Text: "Test response",
@@ -409,13 +377,10 @@ func TestStart_StreamingEnabled(t *testing.T) {
 		close(streamingChan)
 	}()
 
-	// Since we know EOF is expected, we can handle it appropriately
 	err := session.Start(ctx)
 
-	// Wait for the goroutine to finish
 	wg.Wait()
 
-	// Check if error contains "EOF" - this might be expected behavior
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -435,11 +400,9 @@ func TestStart_NoStreaming(t *testing.T) {
 
 	sessionUUID := uuid.New()
 
-	// Create a custom reader for testing input
 	mockInput := "Hello\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))
 
-	// Set up mock expectations for all theme methods
 	mockWriter := mocks.NewMockWriter(t)
 	mockTheme.EXPECT().Primary().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Secondary().Return(mockWriter).Maybe()
@@ -449,7 +412,6 @@ func TestStart_NoStreaming(t *testing.T) {
 	mockTheme.EXPECT().Error().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Subtle().Return(mockWriter).Maybe()
 
-	// Add explicit expectations for the actual calls that will happen
 	mockWriter.EXPECT().Println(mock.Anything, mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Println(mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Print(mock.Anything).Return().Maybe()
@@ -466,7 +428,6 @@ func TestStart_NoStreaming(t *testing.T) {
 			go func() {
 				select {
 				case <-ch:
-					// Do nothing, just consume one signal
 				case <-time.After(100 * time.Millisecond):
 					return
 				}
@@ -476,19 +437,15 @@ func TestStart_NoStreaming(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Set up the expectation for Chat
 	mockChatService.EXPECT().
 		Chat(ctx, sessionUUID, "Hello").
 		Return(goai.LLMResponse{Text: "Response text"}, nil)
 
-	// Run the session directly and check the result
 	err := session.Start(ctx)
 
-	// Check if error contains "EOF" - this is expected behavior
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
 		t.Errorf("Unexpected error: %v", err)
 	} else {
-		// Test passes if either there's no error or the error is EOF
 		t.Logf("Received expected EOF error: %v", err)
 	}
 }
@@ -508,7 +465,6 @@ func TestStart_ClearCommand(t *testing.T) {
 	mockInput := "clear\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))
 
-	// Set up mock expectations for all theme methods
 	mockWriter := mocks.NewMockWriter(t)
 	mockTheme.EXPECT().Primary().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Secondary().Return(mockWriter).Maybe()
@@ -518,7 +474,6 @@ func TestStart_ClearCommand(t *testing.T) {
 	mockTheme.EXPECT().Error().Return(mockWriter).Maybe()
 	mockTheme.EXPECT().Subtle().Return(mockWriter).Maybe()
 
-	// Set up writer expectations
 	mockWriter.EXPECT().Println(mock.Anything, mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Println(mock.Anything).Return().Maybe()
 	mockWriter.EXPECT().Print(mock.Anything).Return().Maybe()
@@ -535,7 +490,6 @@ func TestStart_ClearCommand(t *testing.T) {
 			go func() {
 				select {
 				case <-ch:
-					// Do nothing, just consume one signal
 				case <-time.After(100 * time.Millisecond):
 					return
 				}
@@ -545,15 +499,11 @@ func TestStart_ClearCommand(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Instead of using goroutines and channels, just run the method directly
-	// and check if the error is an EOF, which seems to be the expected behavior
 	err := session.Start(ctx)
 
-	// Check if error contains "EOF" - this is expected behavior
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
 		t.Errorf("Unexpected error: %v", err)
 	} else {
-		// Test passes if either there's no error or the error is EOF
 		t.Logf("Received expected EOF error: %v", err)
 	}
 }
