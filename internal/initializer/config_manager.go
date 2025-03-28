@@ -11,42 +11,8 @@ import (
 // LoadConfig loads the existing configuration or creates and loads default config if not found
 func (cm *DefaultConfigManager) LoadConfig() (config.Config, error) {
 	// Initialize with default configuration values
-	defaultConfig := config.Config{
-		Assistant: config.AssistantConfig{
-			Name: "Echoy",
-		},
-		LLM: config.LLMConfig{
-			Provider:    "openai",
-			Model:       "gpt-3.5-turbo",
-			MaxTokens:   4096,
-			Streaming:   true,
-			TopP:        1.0,
-			Temperature: 0.7,
-		},
-		Tools: config.ToolsConfig{
-			Docker: config.DockerConfig{
-				Enabled: false,
-			},
-			Git: config.GitConfig{
-				Enabled: true,
-			},
-			Sed: config.SimpleEnabledConfig{
-				Enabled: true,
-			},
-			Grep: config.SimpleEnabledConfig{
-				Enabled: true,
-			},
-			Cat: config.SimpleEnabledConfig{
-				Enabled: true,
-			},
-			Bash: config.SimpleEnabledConfig{
-				Enabled: true,
-			},
-		},
-		Frontend: config.FrontendConfig{
-			Enabled: false,
-		},
-	}
+	c := config.Config{}
+	defaultConfig := c.Default()
 
 	if cm.configFilePath == "" {
 		return defaultConfig, fmt.Errorf("config file path not set")
