@@ -25,14 +25,20 @@ type ConfigManager interface {
 }
 
 // DefaultConfigManager implements ConfigManager with real file operations
-type DefaultConfigManager struct{}
+type DefaultConfigManager struct {
+	configFilePath string
+}
+
+func NewDefaultConfigManager(configFilePath string) *DefaultConfigManager {
+	return &DefaultConfigManager{configFilePath: configFilePath}
+}
 
 // NewInitializer creates a new initializer with default dependencies
-func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme *theme.Manager) *Initializer {
+func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme *theme.Manager, configManager ConfigManager) *Initializer {
 	return &Initializer{
 		log:           log,
 		appConfig:     appCfg,
-		configManager: &DefaultConfigManager{},
+		configManager: configManager,
 		cliTheme:      theme,
 	}
 }

@@ -24,6 +24,7 @@ type Container struct {
 	ChatHistoryService goai.ChatHistoryStorage
 	ChatSession        *chat.Session
 	ChatService        chat.Service
+	Initializer        *initializer.Initializer
 }
 
 // InitOptions contains options for initialization
@@ -104,12 +105,14 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.Logger.Info("Logger initialized successfully")
 
-	container.ConfigManager = &initializer.DefaultConfigManager{}
+	container.ConfigManager = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath])
 	cfg, err := container.ConfigManager.LoadConfig()
 	if err != nil {
 		container.Logger.Errorf(fmt.Sprintf("error loading configuration: %v", err))
 		return nil, fmt.Errorf("error loading configuration: %w", err)
 	}
+
+	container.Initializer = initializer.NewInitializer(container.Logger, container.Config, container.ThemeMgr, container.ConfigManager)
 
 	container.LLMService, err = llm.NewLLMService(cfg.LLM)
 	if err != nil {
