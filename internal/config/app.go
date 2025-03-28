@@ -31,39 +31,3 @@ func (v *Version) VersionText() string {
 
 // Option is a function that configures an AppConfig
 type Option func(*AppConfig)
-
-// WithVersion returns an option to set the version
-func WithVersion(v Version) Option {
-	return func(c *AppConfig) {
-		c.Version = v
-	}
-}
-
-// WithName returns an option to set the name
-func WithName(name string) Option {
-	return func(c *AppConfig) {
-		c.Name = name
-	}
-}
-
-// NewDefaultConfig creates a new AppConfig with default values and applies the given options
-func NewDefaultConfig(opts ...Option) *AppConfig {
-	cfg := &AppConfig{
-		Name: "Echoy",
-		Repository: Repository{
-			Owner: "shaharia-lab",
-			Repo:  "echoy",
-		},
-		Version: Version{
-			Version: "0.0.0",
-			Commit:  "unknown",
-			Date:    "unknown",
-		},
-	}
-
-	for _, opt := range opts {
-		opt(cfg)
-	}
-
-	return cfg
-}

@@ -1,11 +1,5 @@
 package config
 
-import (
-	"github.com/fatih/color"
-	"os"
-	"path/filepath"
-)
-
 // AssistantConfig represents the assistant configuration
 type AssistantConfig struct {
 	Name string `yaml:"name"`
@@ -69,26 +63,45 @@ type Config struct {
 	Frontend  FrontendConfig  `yaml:"frontend"`
 }
 
-// GetConfigPath returns the path to the configuration file
-func GetConfigPath() string {
-	configDir, err := os.UserHomeDir()
-	if err != nil {
-		color.Red("Error getting home directory: %v", err)
-		os.Exit(1)
+func (c *Config) Default() Config {
+	return Config{
+		Assistant: AssistantConfig{
+			Name: "Echoy",
+		},
+		User: UserConfig{
+			Name: "",
+		},
+		Tools: ToolsConfig{
+			Docker: DockerConfig{
+				Enabled: false,
+			},
+			Git: GitConfig{
+				Enabled:              true,
+				WhitelistedRepoPaths: []string{},
+				BlockedOperations:    []string{},
+			},
+			Sed: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Grep: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Cat: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Bash: SimpleEnabledConfig{
+				Enabled: true,
+			},
+		},
+		LLM: LLMConfig{
+			Provider:    "openai",
+			Model:       "gpt-3.5-turbo",
+			Token:       "",
+			MaxTokens:   4096,
+			Streaming:   true,
+			TopP:        1.0,
+			Temperature: 0.7,
+			TopK:        50,
+		},
 	}
-	return filepath.Join(configDir, ".echoy", "config.yaml")
-}
-
-// ConfigExists checks if the configuration file exists
-func ConfigExists() bool {
-	configPath := GetConfigPath()
-	_, err := os.Stat(configPath)
-	return !os.IsNotExist(err)
-}
-
-// EnsureConfigDir creates the configuration directory if it doesn't exist
-func EnsureConfigDir() error {
-	configPath := GetConfigPath()
-	configDir := filepath.Dir(configPath)
-	return os.MkdirAll(configDir, 0755)
 }

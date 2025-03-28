@@ -32,7 +32,6 @@ func main() {
 	rootCmd := cmd.NewRootCmd(container)
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr, container.Initializer),
-		cmd.NewConfigCmd(container.Config, container.Logger),
 		chat.NewChatCmd(container),
 		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)

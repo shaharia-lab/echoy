@@ -21,51 +21,6 @@ func (_m *MockConfigManager) EXPECT() *MockConfigManager_Expecter {
 	return &MockConfigManager_Expecter{mock: &_m.Mock}
 }
 
-// ConfigExists provides a mock function with no fields
-func (_m *MockConfigManager) ConfigExists() bool {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for ConfigExists")
-	}
-
-	var r0 bool
-	if rf, ok := ret.Get(0).(func() bool); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	return r0
-}
-
-// MockConfigManager_ConfigExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConfigExists'
-type MockConfigManager_ConfigExists_Call struct {
-	*mock.Call
-}
-
-// ConfigExists is a helper method to define mock.On call
-func (_e *MockConfigManager_Expecter) ConfigExists() *MockConfigManager_ConfigExists_Call {
-	return &MockConfigManager_ConfigExists_Call{Call: _e.mock.On("ConfigExists")}
-}
-
-func (_c *MockConfigManager_ConfigExists_Call) Run(run func()) *MockConfigManager_ConfigExists_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockConfigManager_ConfigExists_Call) Return(_a0 bool) *MockConfigManager_ConfigExists_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockConfigManager_ConfigExists_Call) RunAndReturn(run func() bool) *MockConfigManager_ConfigExists_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // LoadConfig provides a mock function with no fields
 func (_m *MockConfigManager) LoadConfig() (config.Config, error) {
 	ret := _m.Called()
@@ -126,7 +81,7 @@ func (_m *MockConfigManager) SaveConfig(_a0 config.Config) error {
 	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
-		panic("no return value specified for saveConfig")
+		panic("no return value specified for SaveConfig")
 	}
 
 	var r0 error
@@ -139,7 +94,7 @@ func (_m *MockConfigManager) SaveConfig(_a0 config.Config) error {
 	return r0
 }
 
-// MockConfigManager_SaveConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'saveConfig'
+// MockConfigManager_SaveConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveConfig'
 type MockConfigManager_SaveConfig_Call struct {
 	*mock.Call
 }
@@ -147,7 +102,7 @@ type MockConfigManager_SaveConfig_Call struct {
 // SaveConfig is a helper method to define mock.On call
 //   - _a0 config.Config
 func (_e *MockConfigManager_Expecter) SaveConfig(_a0 interface{}) *MockConfigManager_SaveConfig_Call {
-	return &MockConfigManager_SaveConfig_Call{Call: _e.mock.On("saveConfig", _a0)}
+	return &MockConfigManager_SaveConfig_Call{Call: _e.mock.On("SaveConfig", _a0)}
 }
 
 func (_c *MockConfigManager_SaveConfig_Call) Run(run func(_a0 config.Config)) *MockConfigManager_SaveConfig_Call {
