@@ -21,7 +21,6 @@ type Initializer struct {
 type ConfigManager interface {
 	LoadConfig() (config.Config, error)
 	SaveConfig(config.Config) error
-	ConfigExists() bool
 }
 
 // DefaultConfigManager implements ConfigManager with real file operations
@@ -54,7 +53,7 @@ func (i *Initializer) Run() error {
 	i.log.Debug("Starting configuration process")
 
 	var err error
-	i.IsUpdateMode = i.configManager.ConfigExists()
+	i.IsUpdateMode = true
 	i.log.Debug(fmt.Sprintf("Update mode: %v", i.IsUpdateMode))
 
 	if i.IsUpdateMode {

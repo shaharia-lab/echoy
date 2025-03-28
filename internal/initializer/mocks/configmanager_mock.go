@@ -126,7 +126,7 @@ func (_m *MockConfigManager) SaveConfig(_a0 config.Config) error {
 	ret := _m.Called(_a0)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SaveConfig")
+		panic("no return value specified for saveConfig")
 	}
 
 	var r0 error
@@ -139,7 +139,7 @@ func (_m *MockConfigManager) SaveConfig(_a0 config.Config) error {
 	return r0
 }
 
-// MockConfigManager_SaveConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveConfig'
+// MockConfigManager_SaveConfig_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'saveConfig'
 type MockConfigManager_SaveConfig_Call struct {
 	*mock.Call
 }
@@ -147,7 +147,7 @@ type MockConfigManager_SaveConfig_Call struct {
 // SaveConfig is a helper method to define mock.On call
 //   - _a0 config.Config
 func (_e *MockConfigManager_Expecter) SaveConfig(_a0 interface{}) *MockConfigManager_SaveConfig_Call {
-	return &MockConfigManager_SaveConfig_Call{Call: _e.mock.On("SaveConfig", _a0)}
+	return &MockConfigManager_SaveConfig_Call{Call: _e.mock.On("saveConfig", _a0)}
 }
 
 func (_c *MockConfigManager_SaveConfig_Call) Run(run func(_a0 config.Config)) *MockConfigManager_SaveConfig_Call {

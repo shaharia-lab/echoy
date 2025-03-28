@@ -24,33 +24,22 @@ func main() {
 	})
 
 	if err != nil {
-		return
+		fmt.Println("Error initializing container:", err)
+		os.Exit(1)
 	}
 
-	log := container.Logger
-	appCfg := container.Config
-
-	defer container.Logger.Sync()
-
-	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
-
 	// setup commands
-	rootCmd := cmd.NewRootCmd(appCfg, container.Logger, container.ThemeMgr)
+	rootCmd := cmd.NewRootCmd(container)
 	rootCmd.AddCommand(
 		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr, container.Initializer),
-		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(container.Config, container.ChatSession),
+		cmd.NewConfigCmd(container.Config, container.Logger),
+		chat.NewChatCmd(container),
 		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		container.ThemeMgr.GetCurrentTheme().Error().Println(err)
-		//log.Error(fmt.Sprintf("%v", err))
-		log.Sync()
+		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	log.Infof(fmt.Sprintf("%s exited successfully", appCfg.Name))
-	log.Sync()
 }
