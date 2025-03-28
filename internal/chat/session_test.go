@@ -163,148 +163,147 @@ func TestProcessMessage_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), expectedErr.Error())
 }
 
-/*
-	func TestProcessMessageStreaming(t *testing.T) {
-		// Create a session with minimal configuration
-		mockConfig := &config.Config{}
-		mockTheme := setupMockTheme(t)
-		mockChatService := chatMock.NewMockService(t)
-		mockHistoryService := chatMock.NewMockHistoryService(t)
+func TestProcessMessageStreaming(t *testing.T) {
+	// Create a session with minimal configuration
+	mockConfig := &config.Config{}
+	mockTheme := setupMockTheme(t)
+	mockChatService := chatMock.NewMockService(t)
+	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-		sessionUUID := uuid.New()
+	sessionUUID := uuid.New()
 
-		// Create a flag to ensure the thinking function was called
-		thinkingCalled := false
+	// Create a flag to ensure the thinking function was called
+	thinkingCalled := false
 
-		session := &Session{
-			config:             mockConfig,
-			theme:              mockTheme,
-			chatService:        mockChatService,
-			chatHistoryService: mockHistoryService,
-			sessionID:          sessionUUID,
-			thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
-				thinkingCalled = true
-				// Simple implementation that just waits for the channel to close
-				for range ch {
-					// Just consume any signals
-				}
-			},
-		}
-
-		ctx := context.Background()
-		input := "test input"
-		streamChan := make(chan goai.StreamingLLMResponse)
-
-		// Set expectations
-		mockChatService.EXPECT().
-			ChatStreaming(ctx, sessionUUID, input).
-			Return(streamChan, nil)
-
-		// Run the test function in a goroutine
-		errChan := make(chan error)
-		go func() {
-			errChan <- session.processMessageStreaming(ctx, input)
-		}()
-
-		// Send a couple of streaming responses
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-
-			streamChan <- goai.StreamingLLMResponse{
-				Text: "test ",
-				Done: false,
+	session := &Session{
+		config:             mockConfig,
+		theme:              mockTheme,
+		chatService:        mockChatService,
+		chatHistoryService: mockHistoryService,
+		sessionID:          sessionUUID,
+		thinkingAnimationFunc: func(theme theme.Theme, ch chan bool) {
+			thinkingCalled = true
+			// Simple implementation that just waits for the channel to close
+			for range ch {
+				// Just consume any signals
 			}
-
-			time.Sleep(50 * time.Millisecond)
-
-			streamChan <- goai.StreamingLLMResponse{
-				Text: "response",
-				Done: true,
-			}
-
-			close(streamChan)
-		}()
-
-		// Wait for completion with timeout
-		select {
-		case err := <-errChan:
-			assert.NoError(t, err)
-			assert.True(t, thinkingCalled, "Thinking animation function should be called")
-		case <-time.After(2 * time.Second):
-			t.Fatal("Test timed out")
-		}
+		},
 	}
 
-	func TestProcessMessageStreaming_InitialError(t *testing.T) {
-		mockConfig := &config.Config{}
-		mockTheme := mocks.NewMockTheme(t)
-		mockChatService := chatMock.NewMockService(t)
-		mockHistoryService := chatMock.NewMockHistoryService(t)
+	ctx := context.Background()
+	input := "test input"
+	streamChan := make(chan goai.StreamingLLMResponse)
 
-		sessionUUID := uuid.New()
-		session := &Session{
-			config:             mockConfig,
-			theme:              mockTheme,
-			chatService:        mockChatService,
-			chatHistoryService: mockHistoryService,
-			sessionID:          sessionUUID,
+	// Set expectations
+	mockChatService.EXPECT().
+		ChatStreaming(ctx, sessionUUID, input).
+		Return(streamChan, nil)
+
+	// Run the test function in a goroutine
+	errChan := make(chan error)
+	go func() {
+		errChan <- session.processMessageStreaming(ctx, input)
+	}()
+
+	// Send a couple of streaming responses
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+
+		streamChan <- goai.StreamingLLMResponse{
+			Text: "test ",
+			Done: false,
 		}
 
-		ctx := context.Background()
-		input := "test input"
-		expectedErr := errors.New("streaming error")
+		time.Sleep(50 * time.Millisecond)
 
-		mockChatService.EXPECT().
-			ChatStreaming(ctx, sessionUUID, input).
-			Return(nil, expectedErr)
+		streamChan <- goai.StreamingLLMResponse{
+			Text: "response",
+			Done: true,
+		}
 
-		err := session.processMessageStreaming(ctx, input)
+		close(streamChan)
+	}()
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), expectedErr.Error())
+	// Wait for completion with timeout
+	select {
+	case err := <-errChan:
+		assert.NoError(t, err)
+		assert.True(t, thinkingCalled, "Thinking animation function should be called")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Test timed out")
+	}
+}
+
+func TestProcessMessageStreaming_InitialError(t *testing.T) {
+	mockConfig := &config.Config{}
+	mockTheme := mocks.NewMockTheme(t)
+	mockChatService := chatMock.NewMockService(t)
+	mockHistoryService := chatMock.NewMockHistoryService(t)
+
+	sessionUUID := uuid.New()
+	session := &Session{
+		config:             mockConfig,
+		theme:              mockTheme,
+		chatService:        mockChatService,
+		chatHistoryService: mockHistoryService,
+		sessionID:          sessionUUID,
 	}
 
-	func TestProcessMessageStreaming_ResponseError(t *testing.T) {
-		session, mockChatService, _ := setupTestSession(t)
+	ctx := context.Background()
+	input := "test input"
+	expectedErr := errors.New("streaming error")
 
-		// Override the thinking animation function with a safer implementation
-		session.thinkingAnimationFunc = func(theme theme.Theme, ch chan bool) {
-			go func() {
-				<-ch // Just wait for one signal
-			}()
-		}
+	mockChatService.EXPECT().
+		ChatStreaming(ctx, sessionUUID, input).
+		Return(nil, expectedErr)
 
-		ctx := context.Background()
-		input := "test input"
-		expectedErr := errors.New("streaming response error")
+	err := session.processMessageStreaming(ctx, input)
 
-		streamingChan := make(chan goai.StreamingLLMResponse)
-		mockChatService.EXPECT().
-			ChatStreaming(ctx, session.sessionID, input).
-			Return(streamingChan, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), expectedErr.Error())
+}
 
-		// Use a wait group to ensure the test waits for the goroutine to finish
-		var wg sync.WaitGroup
-		wg.Add(1)
+func TestProcessMessageStreaming_ResponseError(t *testing.T) {
+	session, mockChatService, _ := setupTestSession(t)
+
+	// Override the thinking animation function with a safer implementation
+	session.thinkingAnimationFunc = func(theme theme.Theme, ch chan bool) {
 		go func() {
-			defer wg.Done()
-			streamingChan <- goai.StreamingLLMResponse{
-				Text: "part1 ",
-				Done: false,
-			}
-			streamingChan <- goai.StreamingLLMResponse{
-				Error: expectedErr,
-			}
-			close(streamingChan)
+			<-ch // Just wait for one signal
 		}()
-
-		err := session.processMessageStreaming(ctx, input)
-		wg.Wait() // Wait for the goroutine to complete
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), expectedErr.Error())
 	}
-*/
+
+	ctx := context.Background()
+	input := "test input"
+	expectedErr := errors.New("streaming response error")
+
+	streamingChan := make(chan goai.StreamingLLMResponse)
+	mockChatService.EXPECT().
+		ChatStreaming(ctx, session.sessionID, input).
+		Return(streamingChan, nil)
+
+	// Use a wait group to ensure the test waits for the goroutine to finish
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		streamingChan <- goai.StreamingLLMResponse{
+			Text: "part1 ",
+			Done: false,
+		}
+		streamingChan <- goai.StreamingLLMResponse{
+			Error: expectedErr,
+		}
+		close(streamingChan)
+	}()
+
+	err := session.processMessageStreaming(ctx, input)
+	wg.Wait() // Wait for the goroutine to complete
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), expectedErr.Error())
+}
+
 func TestStart_StreamingEnabled(t *testing.T) {
 	mockConfig := &config.Config{
 		LLM: config.LLMConfig{
