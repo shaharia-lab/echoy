@@ -13,7 +13,7 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 	themeManager.GetCurrentTheme().Info().Println("\n🤖 Configure LLM Settings")
 
 	// Get providers and find the current provider's name for default selection
-	var providers = []string{}
+	var providers []string
 	defaultProviderName := ""
 
 	for _, provider := range GetSupportedLLMProviders() {
