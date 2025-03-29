@@ -2,8 +2,10 @@ package llm
 
 import (
 	"fmt"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
+
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/theme"
 )
