@@ -5,6 +5,7 @@ import (
 	"github.com/shaharia-lab/echoy/cmd"
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
+	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"os"
@@ -31,7 +32,7 @@ func main() {
 	// setup commands
 	rootCmd := cmd.NewRootCmd(container)
 	rootCmd.AddCommand(
-		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr, container.Initializer),
+		initializer.NewCmd(container.Config, container.Logger, container.ThemeMgr, container.Initializer),
 		chat.NewChatCmd(container),
 		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
 	)

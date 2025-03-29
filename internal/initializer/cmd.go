@@ -1,16 +1,15 @@
-package cmd
+package initializer
 
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
-	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 )
 
-// NewInitCmd creates an interactive init command
-func NewInitCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *initializer.Initializer) *cobra.Command {
+// NewCmd creates an interactive init command
+func NewCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
 	cmd := &cobra.Command{
 		Version: config.Version.VersionText(),
 		Use:     "init",
