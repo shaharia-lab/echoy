@@ -23,7 +23,6 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		}
 	}
 
-	// Collect provider information
 	var selectedProvider string
 	var providerID string
 
@@ -32,11 +31,9 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		Options: providers,
 	}
 
-	// Only set default if it's a valid option
 	if defaultProviderName != "" {
 		promptProvider.Default = defaultProviderName
 	} else if len(providers) > 0 {
-		// If no valid default, use first provider as default
 		promptProvider.Default = providers[0]
 	}
 
@@ -62,14 +59,12 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		return fmt.Errorf("no models available for the selected provider")
 	}
 
-	// Collect model information
 	var selectedModel string
 	promptModel := &survey.Select{
 		Message: "Select a model:",
 		Options: modelOptions,
 	}
 
-	// Only set default model if it exists in the options
 	modelExists := false
 	for _, option := range modelOptions {
 		if option == config.LLM.Model {
@@ -81,7 +76,6 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 	if modelExists {
 		promptModel.Default = config.LLM.Model
 	} else if len(modelOptions) > 0 {
-		// If no valid default, use first model as default
 		promptModel.Default = modelOptions[0]
 	}
 
@@ -90,7 +84,6 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		return err
 	}
 
-	// Collect token information
 	var apiToken string
 	promptToken := &survey.Password{
 		Message: "Enter your API token:",
@@ -106,12 +99,10 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		return err
 	}
 
-	// Only update config if all three settings are provided
 	if apiToken == "" {
 		if config.LLM.Token == "" {
 			return fmt.Errorf("API token is required")
 		}
-		// Using existing token
 		apiToken = config.LLM.Token
 	}
 
