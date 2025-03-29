@@ -26,6 +26,8 @@ func NewInitCmd(config *config.AppConfig, logger *logger.Logger, themeManager *t
 			}
 
 			logger.Info("Initialization complete. You can now run 'echoy' to start using Echoy.")
+
+			themeManager.GetCurrentTheme().Info().Println("\nRun 'echoy chat' to start an interactive chat session.")
 			themeManager.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
 			return nil
 		},

@@ -99,6 +99,5 @@ func (i *Initializer) Run() error {
 
 	i.log.Debug("Configuration process complete")
 	i.cliTheme.GetCurrentTheme().Success().Println("\n✅ Configuration updated successfully!")
-	i.cliTheme.GetCurrentTheme().Info().Println("Run 'echoy chat' to start an interactive chat session.")
 	return nil
 }
