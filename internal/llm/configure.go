@@ -1,23 +1,24 @@
-package initializer
+package llm
 
 import (
 	"fmt"
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
-	"github.com/shaharia-lab/echoy/internal/llm"
+	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
 // ConfigureLLM configures LLM provider and model settings
-func (i *Initializer) ConfigureLLM() error {
-	i.cliTheme.GetCurrentTheme().Info().Println("\n🤖 Configure LLM Settings")
+func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
+	themeManager.GetCurrentTheme().Info().Println("\n🤖 Configure LLM Settings")
 
 	// Get providers and find the current provider's name for default selection
 	var providers = []string{}
 	defaultProviderName := ""
 
-	for _, provider := range llm.GetSupportedLLMProviders() {
+	for _, provider := range GetSupportedLLMProviders() {
 		providers = append(providers, provider.Name)
-		if provider.ID == i.Config.LLM.Provider {
+		if provider.ID == config.LLM.Provider {
 			defaultProviderName = provider.Name
 		}
 	}
@@ -45,7 +46,7 @@ func (i *Initializer) ConfigureLLM() error {
 	}
 
 	var modelOptions []string
-	for _, provider := range llm.GetSupportedLLMProviders() {
+	for _, provider := range GetSupportedLLMProviders() {
 		if provider.Name == selectedProvider {
 			modelOptions = provider.ModelIDs
 			providerID = provider.ID
@@ -71,14 +72,14 @@ func (i *Initializer) ConfigureLLM() error {
 	// Only set default model if it exists in the options
 	modelExists := false
 	for _, option := range modelOptions {
-		if option == i.Config.LLM.Model {
+		if option == config.LLM.Model {
 			modelExists = true
 			break
 		}
 	}
 
 	if modelExists {
-		promptModel.Default = i.Config.LLM.Model
+		promptModel.Default = config.LLM.Model
 	} else if len(modelOptions) > 0 {
 		// If no valid default, use first model as default
 		promptModel.Default = modelOptions[0]
@@ -96,7 +97,7 @@ func (i *Initializer) ConfigureLLM() error {
 		Help:    "This will be used to authenticate with the LLM provider",
 	}
 
-	if i.Config.LLM.Token != "" {
+	if config.LLM.Token != "" {
 		color.Yellow("API token is already set. Press Enter to keep the existing token or enter a new one.")
 	}
 
@@ -107,25 +108,25 @@ func (i *Initializer) ConfigureLLM() error {
 
 	// Only update config if all three settings are provided
 	if apiToken == "" {
-		if i.Config.LLM.Token == "" {
+		if config.LLM.Token == "" {
 			return fmt.Errorf("API token is required")
 		}
 		// Using existing token
-		apiToken = i.Config.LLM.Token
+		apiToken = config.LLM.Token
 	}
 
-	i.Config.LLM.Provider = providerID
-	i.Config.LLM.Model = selectedModel
-	i.Config.LLM.Token = apiToken
+	config.LLM.Provider = providerID
+	config.LLM.Model = selectedModel
+	config.LLM.Token = apiToken
 
 	var maxTokens int64
-	if i.Config.LLM.MaxTokens == 0 {
-		i.Config.LLM.MaxTokens = 1000
+	if config.LLM.MaxTokens == 0 {
+		config.LLM.MaxTokens = 1000
 	}
 
 	promptMaxTokens := &survey.Input{
 		Message: "Enter the maximum number of tokens:",
-		Default: fmt.Sprintf("%d", i.Config.LLM.MaxTokens),
+		Default: fmt.Sprintf("%d", config.LLM.MaxTokens),
 		Help:    "Defines the maximum length of the generated response.",
 	}
 
@@ -135,12 +136,12 @@ func (i *Initializer) ConfigureLLM() error {
 	}
 
 	var topP float64
-	if i.Config.LLM.TopP == 0 {
-		i.Config.LLM.TopP = 0.5
+	if config.LLM.TopP == 0 {
+		config.LLM.TopP = 0.5
 	}
 	promptTopP := &survey.Input{
 		Message: "Enter the top-p value (0.0 - 1.0):",
-		Default: fmt.Sprintf("%f", i.Config.LLM.TopP),
+		Default: fmt.Sprintf("%f", config.LLM.TopP),
 		Help:    "Top-p sampling narrows the set of possible results to those whose probabilities sum up to this value.",
 	}
 
@@ -150,12 +151,12 @@ func (i *Initializer) ConfigureLLM() error {
 	}
 
 	var topK int
-	if i.Config.LLM.TopK == 0 {
-		i.Config.LLM.TopK = 50
+	if config.LLM.TopK == 0 {
+		config.LLM.TopK = 50
 	}
 	promptTopK := &survey.Input{
 		Message: "Enter the top-k value:",
-		Default: fmt.Sprintf("%d", i.Config.LLM.TopK),
+		Default: fmt.Sprintf("%d", config.LLM.TopK),
 		Help:    "Limits the sampling to the top-k most likely results.",
 	}
 
@@ -165,13 +166,13 @@ func (i *Initializer) ConfigureLLM() error {
 	}
 
 	var temperature float64
-	if i.Config.LLM.Temperature == 0 {
-		i.Config.LLM.Temperature = 0.5
+	if config.LLM.Temperature == 0 {
+		config.LLM.Temperature = 0.5
 	}
 
 	promptTemperature := &survey.Input{
 		Message: "Enter the temperature value (0.0 - 1.0):",
-		Default: fmt.Sprintf("%f", i.Config.LLM.Temperature),
+		Default: fmt.Sprintf("%f", config.LLM.Temperature),
 		Help:    "Controls the creativity of the responses. Higher temperature values make results more varied.",
 	}
 
@@ -181,7 +182,7 @@ func (i *Initializer) ConfigureLLM() error {
 	}
 
 	streaming := false
-	if i.Config.LLM.Streaming {
+	if config.LLM.Streaming {
 		streaming = true
 	}
 
@@ -193,11 +194,11 @@ func (i *Initializer) ConfigureLLM() error {
 
 	err = survey.AskOne(promptStreaming, &streaming)
 
-	i.Config.LLM.MaxTokens = maxTokens
-	i.Config.LLM.TopP = topP
-	i.Config.LLM.TopK = topK
-	i.Config.LLM.Temperature = temperature
-	i.Config.LLM.Streaming = streaming
+	config.LLM.MaxTokens = maxTokens
+	config.LLM.TopP = topP
+	config.LLM.TopK = topK
+	config.LLM.Temperature = temperature
+	config.LLM.Streaming = streaming
 
 	return nil
 }

@@ -3,6 +3,7 @@ package initializer
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 )
@@ -85,7 +86,7 @@ func (i *Initializer) Run() error {
 		return fmt.Errorf("error configuring user: %v", err)
 	}
 
-	err = i.ConfigureLLM()
+	err = llm.ConfigureLLM(i.cliTheme, i.Config)
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
 		return fmt.Errorf("error configuring LLM: %v", err)
