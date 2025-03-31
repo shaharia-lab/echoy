@@ -46,7 +46,7 @@ type LLMConfig struct {
 	Streaming   bool    `yaml:"streaming"`
 	TopP        float64 `yaml:"top_p"`
 	Temperature float64 `yaml:"temperature"`
-	TopK        int     `yaml:"top_k"`
+	TopK        int64   `yaml:"top_k"`
 }
 
 // FrontendConfig represents the frontend configuration

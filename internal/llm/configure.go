@@ -144,7 +144,7 @@ func ConfigureLLM(themeManager *theme.Manager, config *config.Config) error {
 		return err
 	}
 
-	var topK int
+	var topK int64
 	if config.LLM.TopK == 0 {
 		config.LLM.TopK = 50
 	}

@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/rhysd/go-github-selfupdate v1.2.3
-	github.com/shaharia-lab/goai v0.12.0
+	github.com/shaharia-lab/goai v0.13.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -86,5 +86,3 @@ require (
 	google.golang.org/grpc v1.64.1 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 )
-
-replace github.com/shaharia-lab/goai => ../goai
