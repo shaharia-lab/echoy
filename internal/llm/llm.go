@@ -21,10 +21,23 @@ func GetSupportedLLMProviders() []Provider {
 			Name:        "Anthropic",
 			Description: "One of the leading AI/ML model providers",
 			ModelIDs: []string{
-				anthropic.ModelClaude3OpusLatest,
 				anthropic.ModelClaude3_7SonnetLatest,
 				anthropic.ModelClaude3_5HaikuLatest,
 				anthropic.ModelClaude3_5SonnetLatest,
+				anthropic.ModelClaude3OpusLatest,
+			},
+		},
+		{
+			ID:          "gemini",
+			Name:        "Google Gemini",
+			Description: "Google's Gemini model",
+			ModelIDs: []string{
+				"gemini-2.0-flash",
+				"gemini-2.5-pro-exp-03-25",
+				"gemini-2.0-flash-lite",
+				"gemini-1.5-flash",
+				"gemini-1.5-flash-8b",
+				"gemini-1.5-pro",
 			},
 		},
 	}

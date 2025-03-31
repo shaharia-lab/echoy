@@ -86,7 +86,7 @@ func (i *Initializer) Run() error {
 		return fmt.Errorf("error configuring user: %v", err)
 	}
 
-	err = llm.ConfigureLLM(i.cliTheme, i.Config)
+	err = llm.ConfigureLLM(i.cliTheme, &i.Config)
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
 		return fmt.Errorf("error configuring LLM: %v", err)

@@ -2,6 +2,7 @@ package llm
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
@@ -11,7 +12,7 @@ import (
 )
 
 // ConfigureLLM configures LLM provider and model settings
-func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
+func ConfigureLLM(themeManager *theme.Manager, config *config.Config) error {
 	themeManager.GetCurrentTheme().Info().Println("\n🤖 Configure LLM Settings")
 
 	// Get providers and find the current provider's name for default selection
@@ -26,7 +27,6 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 	}
 
 	var selectedProvider string
-	var providerID string
 
 	promptProvider := &survey.Select{
 		Message: "Choose an LLM provider:",
@@ -44,6 +44,7 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 		return err
 	}
 
+	var providerID string
 	var modelOptions []string
 	for _, provider := range GetSupportedLLMProviders() {
 		if provider.Name == selectedProvider {
@@ -192,6 +193,17 @@ func ConfigureLLM(themeManager *theme.Manager, config config.Config) error {
 	config.LLM.TopK = topK
 	config.LLM.Temperature = temperature
 	config.LLM.Streaming = streaming
+
+	log.Printf(
+		"LLM provider: %s\nModel: %s\nAPI token: %s\nMax tokens: %d\nTop-p: %f\nTop-k: %d\nTemperature: %f\nStreaming: %t\n",
+		providerID,
+		selectedModel,
+		apiToken,
+		maxTokens,
+		topP,
+		topK,
+		temperature,
+		streaming)
 
 	return nil
 }

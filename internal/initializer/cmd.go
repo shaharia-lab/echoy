@@ -17,6 +17,7 @@ func NewCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Info("Starting initialization...")
+			defer logger.Sync()
 
 			if err := initializer.Run(); err != nil {
 				logger.Error(fmt.Sprintf("Initialization failed: %v", err))
@@ -28,6 +29,7 @@ func NewCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme
 
 			themeManager.GetCurrentTheme().Info().Println("\nRun 'echoy chat' to start an interactive chat session.")
 			themeManager.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
+
 			return nil
 		},
 	}
