@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
+	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
+	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +23,15 @@ func NewRootCmd(container *cli.Container) *cobra.Command {
 			themeManager.DisplayBanner(fmt.Sprintf("Welcome to %s", container.Config.Name), 40, "Your AI assistant for the CLI")
 			fmt.Println("")
 			themeManager.GetCurrentTheme().Warning().Println("Please run 'echoy init' to set up your assistant.")
+
+			telemetryEvent.SendTelemetryEvent(
+				cm.Context(),
+				container.Config,
+				"cmd.root.execute",
+				telemetry.SeverityInfo,
+				"Root command executed",
+				nil,
+			)
 
 			return nil
 		},

@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
+	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	"github.com/shaharia-lab/telemetry-collector"
 	"os"
 	"strings"
 
@@ -19,6 +21,15 @@ func NewUpdateCmd(appCfg *config.AppConfig, themeManager *theme.Manager) *cobra.
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			telemetryEvent.SendTelemetryEvent(
+				cmd.Context(),
+				appCfg,
+				"cmd.update",
+				telemetry.SeverityInfo,
+				"Start updating the CLI",
+				nil,
+			)
+
 			return runUpdate(themeManager.GetCurrentTheme(), appCfg.Repository, appCfg.Version.Version)
 		},
 	}

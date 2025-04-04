@@ -1,4 +1,4 @@
 # This dockerfile is only used to build the backend image for the application using goreleaser.
-FROM scratch
+FROM golang:1.24-alpine
 COPY echoy /app/echoy
-ENTRYPOINT []
+ENTRYPOINT ["/app/echoy"]

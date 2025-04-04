@@ -54,6 +54,7 @@ require (
 	github.com/openai/openai-go v0.1.0-alpha.61 // indirect
 	github.com/pgvector/pgvector-go v0.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/shaharia-lab/telemetry-collector v0.0.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tcnksm/go-gitconfig v0.1.2 // indirect

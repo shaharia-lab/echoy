@@ -1,10 +1,13 @@
 package initializer
 
 import (
+	"context"
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +19,14 @@ func NewCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme
 		Short:   "Initialize the Echoy with a guided setup",
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			telemetryEvent.SendTelemetryEvent(
+				context.Background(),
+				config,
+				"cmd.init",
+				telemetry.SeverityInfo, "Starting initialization",
+				nil,
+			)
+
 			logger.Info("Starting initialization...")
 			defer logger.Sync()
 

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/llm"
+	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/goai"
+	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +32,17 @@ func NewChatCmd(container *cli.Container) *cobra.Command {
 				container.Logger.Errorf(fmt.Sprintf("error creating chat session: %v", err))
 				return fmt.Errorf("error creating chat session: %w", err)
 			}
-			return chatSession.Start(context.Background())
+
+			ctx := context.Background()
+			telemetryEvent.SendTelemetryEvent(
+				ctx,
+				container.Config,
+				"cmd.chat",
+				telemetry.SeverityInfo, "Starting chat session",
+				nil,
+			)
+
+			return chatSession.Start(ctx)
 		},
 	}
 
