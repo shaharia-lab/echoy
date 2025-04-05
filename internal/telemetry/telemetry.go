@@ -37,7 +37,7 @@ func SendTelemetryEvent(ctx context.Context, appCfg *config.AppConfig, eventName
 			"go.runtime_version": runtime.Version(),
 		},
 		Resource: map[string]interface{}{
-			"service.name":    appCfg.Name,
+			"service.name":    fmt.Sprintf("%s-cli", appCfg.Name),
 			"service.version": appCfg.Version.Version,
 		},
 	}
