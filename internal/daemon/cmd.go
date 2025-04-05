@@ -15,12 +15,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewRunCmd creates a command to run the daemon
-func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
+// NewStartCmd creates a command to run the daemon
+func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
-		Use:   "run",
+		Use:   "start",
 		Short: "Start the Echoy daemon",
 		Long:  `Starts the Echoy daemon that processes background tasks and client requests.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -28,7 +28,7 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 				telemetryEvent.SendTelemetryEvent(
 					context.Background(),
 					appConfig,
-					"daemon.run",
+					"daemon.start",
 					telemetry.SeverityInfo, "Starting daemon",
 					nil,
 				)
@@ -37,14 +37,11 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 			logger.Info("Starting daemon...")
 			defer logger.Sync()
 
-			// Create daemon instance
 			daemon := NewDaemon(socketPath)
 
-			// Create a context that can be canceled
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			// Set up signal handling
 			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -54,7 +51,6 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 				cancel()
 			}()
 
-			// Start the daemon
 			if err := daemon.Start(); err != nil {
 				logger.Error(fmt.Sprintf("Failed to start daemon: %v", err))
 				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon: %v", err))
@@ -69,7 +65,6 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 				return nil
 			}
 
-			// Wait for context cancellation (signal or error)
 			<-ctx.Done()
 			logger.Info("Stopping daemon...")
 			daemon.Stop()
@@ -79,7 +74,6 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 		},
 	}
 
-	// Add command-specific flags
 	cmd.Flags().BoolVarP(&foreground, "foreground", "f", false, "Run daemon in foreground (don't detach)")
 
 	return cmd
