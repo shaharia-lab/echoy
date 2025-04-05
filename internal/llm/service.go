@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/goai"
+	"github.com/shaharia-lab/goai/observability"
+	"log"
 	"strings"
 )
 
@@ -29,6 +31,10 @@ func NewLLMService(llmConfig config.LLMConfig) (*ServiceImpl, error) {
 
 	cfg := goai.NewRequestConfig(
 		goai.WithMaxToken(llmConfig.MaxTokens),
+		goai.WithTopP(llmConfig.TopP),
+		goai.WithTemperature(llmConfig.Temperature),
+		goai.WithTopK(llmConfig.TopK),
+		goai.UseToolsProvider(goai.NewToolsProvider()),
 		goai.WithTemperature(llmConfig.Temperature),
 		goai.UseToolsProvider(goai.NewToolsProvider()),
 	)
@@ -67,6 +73,13 @@ func buildLLMProvider(llmConfig config.LLMConfig) (goai.LLMProvider, error) {
 			Client: goai.NewAnthropicClient(llmConfig.Token),
 			Model:  llmConfig.Model,
 		}), nil
+	case "gemini":
+		googleGeminiService, err := goai.NewGoogleGeminiService(llmConfig.Token, llmConfig.Model)
+		if err != nil {
+			log.Fatalf("Error creating Google Gemini Service: %v", err)
+		}
+
+		return goai.NewGeminiProvider(googleGeminiService, observability.NewNullLogger())
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", llmConfig.Provider)
 	}

@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/shaharia-lab/echoy/cmd"
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
+	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	"github.com/shaharia-lab/telemetry-collector"
 	"os"
 )
 
@@ -15,43 +19,38 @@ var commit = "none"
 var date = "unknown"
 
 func main() {
-	container, err := cli.NewContainer(cli.InitOptions{
+	ctx := context.Background()
+
+	cliContainer, err := cli.NewContainer(cli.InitOptions{
 		Version:  version,
 		Commit:   commit,
 		Date:     date,
 		LogLevel: logger.InfoLevel,
 		Theme:    theme.NewProfessionalTheme(),
 	})
-
 	if err != nil {
-		fmt.Printf("failed to initialize container: %v\n", err)
+		fmt.Println("Error initializing cliContainer:", err)
 		os.Exit(1)
 	}
 
-	log := container.Logger
-	appCfg := container.Config
-
-	defer container.Logger.Sync()
-
-	log.Infof(fmt.Sprintf("%s started", appCfg.Name))
+	if cliContainer.ConfigFromFile.UsageTracking.Enabled {
+		telemetryEvent.SendTelemetryEvent(ctx, cliContainer.Config, "start", telemetry.SeverityInfo, "CLI starting", nil)
+	}
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd(appCfg, container.Logger, container.ThemeMgr)
+	rootCmd := cmd.NewRootCmd(cliContainer)
 	rootCmd.AddCommand(
-		cmd.NewInitCmd(container.Config, container.Logger, container.ThemeMgr),
-		cmd.NewConfigCmd(appCfg, log),
-		chat.NewChatCmd(container.Config, container.ChatSession),
-		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
+		initializer.NewCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.Initializer),
+		chat.NewChatCmd(cliContainer),
+		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
 	)
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		container.ThemeMgr.GetCurrentTheme().Error().Println(err)
-		//log.Error(fmt.Sprintf("%v", err))
-		log.Sync()
+		if cliContainer.ConfigFromFile.UsageTracking.Enabled {
+			telemetryEvent.SendTelemetryEvent(ctx, cliContainer.Config, "root.cmd.error", telemetry.SeverityError, "Error executing command", map[string]interface{}{"error": err})
+		}
+		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	log.Infof(fmt.Sprintf("%s exited successfully", appCfg.Name))
-	log.Sync()
 }

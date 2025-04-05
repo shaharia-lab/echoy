@@ -3,7 +3,9 @@ package initializer
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/config"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
@@ -21,18 +23,23 @@ type Initializer struct {
 type ConfigManager interface {
 	LoadConfig() (config.Config, error)
 	SaveConfig(config.Config) error
-	ConfigExists() bool
 }
 
 // DefaultConfigManager implements ConfigManager with real file operations
-type DefaultConfigManager struct{}
+type DefaultConfigManager struct {
+	configFilePath string
+}
+
+func NewDefaultConfigManager(configFilePath string) *DefaultConfigManager {
+	return &DefaultConfigManager{configFilePath: configFilePath}
+}
 
 // NewInitializer creates a new initializer with default dependencies
-func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme *theme.Manager) *Initializer {
+func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme *theme.Manager, configManager ConfigManager) *Initializer {
 	return &Initializer{
 		log:           log,
 		appConfig:     appCfg,
-		configManager: &DefaultConfigManager{},
+		configManager: configManager,
 		cliTheme:      theme,
 	}
 }
@@ -48,7 +55,7 @@ func (i *Initializer) Run() error {
 	i.log.Debug("Starting configuration process")
 
 	var err error
-	i.IsUpdateMode = i.configManager.ConfigExists()
+	i.IsUpdateMode = true
 	i.log.Debug(fmt.Sprintf("Update mode: %v", i.IsUpdateMode))
 
 	if i.IsUpdateMode {
@@ -80,10 +87,16 @@ func (i *Initializer) Run() error {
 		return fmt.Errorf("error configuring user: %v", err)
 	}
 
-	err = i.ConfigureLLM()
+	err = llm.ConfigureLLM(i.cliTheme, &i.Config)
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
 		return fmt.Errorf("error configuring LLM: %v", err)
+	}
+
+	err = telemetry.Configure(i.cliTheme, &i.Config)
+	if err != nil {
+		i.log.Error(fmt.Sprintf("error configuring telemetry: %v", err))
+		return fmt.Errorf("error configuring telemetry: %v", err)
 	}
 
 	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))
@@ -94,6 +107,5 @@ func (i *Initializer) Run() error {
 
 	i.log.Debug("Configuration process complete")
 	i.cliTheme.GetCurrentTheme().Success().Println("\n✅ Configuration updated successfully!")
-	i.cliTheme.GetCurrentTheme().Info().Println("Run 'echoy chat' to start an interactive chat session.")
 	return nil
 }

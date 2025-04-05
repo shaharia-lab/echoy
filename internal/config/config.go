@@ -1,11 +1,5 @@
 package config
 
-import (
-	"github.com/fatih/color"
-	"os"
-	"path/filepath"
-)
-
 // AssistantConfig represents the assistant configuration
 type AssistantConfig struct {
 	Name string `yaml:"name"`
@@ -52,7 +46,7 @@ type LLMConfig struct {
 	Streaming   bool    `yaml:"streaming"`
 	TopP        float64 `yaml:"top_p"`
 	Temperature float64 `yaml:"temperature"`
-	TopK        int     `yaml:"top_k"`
+	TopK        int64   `yaml:"top_k"`
 }
 
 // FrontendConfig represents the frontend configuration
@@ -62,33 +56,61 @@ type FrontendConfig struct {
 
 // Config represents the main configuration
 type Config struct {
-	Assistant AssistantConfig `yaml:"Assistant"`
-	User      UserConfig      `yaml:"user"`
-	Tools     ToolsConfig     `yaml:"tools"`
-	LLM       LLMConfig       `yaml:"llm"`
-	Frontend  FrontendConfig  `yaml:"frontend"`
+	Assistant     AssistantConfig `yaml:"Assistant"`
+	User          UserConfig      `yaml:"user"`
+	Tools         ToolsConfig     `yaml:"tools"`
+	LLM           LLMConfig       `yaml:"llm"`
+	Frontend      FrontendConfig  `yaml:"frontend"`
+	UsageTracking UsageTracking   `yaml:"usage_tracking"`
 }
 
-// GetConfigPath returns the path to the configuration file
-func GetConfigPath() string {
-	configDir, err := os.UserHomeDir()
-	if err != nil {
-		color.Red("Error getting home directory: %v", err)
-		os.Exit(1)
+// UsageTracking represents the usage tracking configuration
+type UsageTracking struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+func (c *Config) Default() Config {
+	return Config{
+		Assistant: AssistantConfig{
+			Name: "Echoy",
+		},
+		User: UserConfig{
+			Name: "",
+		},
+		Tools: ToolsConfig{
+			Docker: DockerConfig{
+				Enabled: false,
+			},
+			Git: GitConfig{
+				Enabled:              true,
+				WhitelistedRepoPaths: []string{},
+				BlockedOperations:    []string{},
+			},
+			Sed: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Grep: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Cat: SimpleEnabledConfig{
+				Enabled: true,
+			},
+			Bash: SimpleEnabledConfig{
+				Enabled: true,
+			},
+		},
+		LLM: LLMConfig{
+			Provider:    "openai",
+			Model:       "gpt-3.5-turbo",
+			Token:       "",
+			MaxTokens:   4096,
+			Streaming:   true,
+			TopP:        1.0,
+			Temperature: 0.7,
+			TopK:        50,
+		},
+		UsageTracking: UsageTracking{
+			Enabled: false,
+		},
 	}
-	return filepath.Join(configDir, ".echoy", "config.yaml")
-}
-
-// ConfigExists checks if the configuration file exists
-func ConfigExists() bool {
-	configPath := GetConfigPath()
-	_, err := os.Stat(configPath)
-	return !os.IsNotExist(err)
-}
-
-// EnsureConfigDir creates the configuration directory if it doesn't exist
-func EnsureConfigDir() error {
-	configPath := GetConfigPath()
-	configDir := filepath.Dir(configPath)
-	return os.MkdirAll(configDir, 0755)
 }
