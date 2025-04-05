@@ -21,7 +21,7 @@ var date = "unknown"
 func main() {
 	ctx := context.Background()
 
-	container, err := cli.NewContainer(cli.InitOptions{
+	cliContainer, err := cli.NewContainer(cli.InitOptions{
 		Version:  version,
 		Commit:   commit,
 		Date:     date,
@@ -29,24 +29,27 @@ func main() {
 		Theme:    theme.NewProfessionalTheme(),
 	})
 	if err != nil {
-		telemetryEvent.SendTelemetryEvent(ctx, container.Config, "start.failed", telemetry.SeverityError, fmt.Sprintf("Error initializing container: %v", err), nil)
-		fmt.Println("Error initializing container:", err)
+		fmt.Println("Error initializing cliContainer:", err)
 		os.Exit(1)
 	}
 
-	telemetryEvent.SendTelemetryEvent(ctx, container.Config, "start", telemetry.SeverityInfo, "CLI starting", nil)
+	if cliContainer.ConfigFromFile.UsageTracking.Enabled {
+		telemetryEvent.SendTelemetryEvent(ctx, cliContainer.Config, "start", telemetry.SeverityInfo, "CLI starting", nil)
+	}
 
 	// setup commands
-	rootCmd := cmd.NewRootCmd(container)
+	rootCmd := cmd.NewRootCmd(cliContainer)
 	rootCmd.AddCommand(
-		initializer.NewCmd(container.Config, container.Logger, container.ThemeMgr, container.Initializer),
-		chat.NewChatCmd(container),
-		cmd.NewUpdateCmd(container.Config, container.ThemeMgr),
+		initializer.NewCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.Initializer),
+		chat.NewChatCmd(cliContainer),
+		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
 	)
 
 	// execute the command
 	if err := rootCmd.Execute(); err != nil {
-		telemetryEvent.SendTelemetryEvent(ctx, container.Config, "root.cmd.error", telemetry.SeverityError, "Error executing command", map[string]interface{}{"error": err})
+		if cliContainer.ConfigFromFile.UsageTracking.Enabled {
+			telemetryEvent.SendTelemetryEvent(ctx, cliContainer.Config, "root.cmd.error", telemetry.SeverityError, "Error executing command", map[string]interface{}{"error": err})
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}

@@ -34,13 +34,15 @@ func NewChatCmd(container *cli.Container) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			telemetryEvent.SendTelemetryEvent(
-				ctx,
-				container.Config,
-				"cmd.chat",
-				telemetry.SeverityInfo, "Starting chat session",
-				nil,
-			)
+			if container.ConfigFromFile.UsageTracking.Enabled {
+				telemetryEvent.SendTelemetryEvent(
+					ctx,
+					container.Config,
+					"cmd.chat",
+					telemetry.SeverityInfo, "Starting chat session",
+					nil,
+				)
+			}
 
 			return chatSession.Start(ctx)
 		},

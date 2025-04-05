@@ -56,11 +56,17 @@ type FrontendConfig struct {
 
 // Config represents the main configuration
 type Config struct {
-	Assistant AssistantConfig `yaml:"Assistant"`
-	User      UserConfig      `yaml:"user"`
-	Tools     ToolsConfig     `yaml:"tools"`
-	LLM       LLMConfig       `yaml:"llm"`
-	Frontend  FrontendConfig  `yaml:"frontend"`
+	Assistant     AssistantConfig `yaml:"Assistant"`
+	User          UserConfig      `yaml:"user"`
+	Tools         ToolsConfig     `yaml:"tools"`
+	LLM           LLMConfig       `yaml:"llm"`
+	Frontend      FrontendConfig  `yaml:"frontend"`
+	UsageTracking UsageTracking   `yaml:"usage_tracking"`
+}
+
+// UsageTracking represents the usage tracking configuration
+type UsageTracking struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 func (c *Config) Default() Config {
@@ -102,6 +108,9 @@ func (c *Config) Default() Config {
 			TopP:        1.0,
 			Temperature: 0.7,
 			TopK:        50,
+		},
+		UsageTracking: UsageTracking{
+			Enabled: false,
 		},
 	}
 }

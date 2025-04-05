@@ -24,14 +24,16 @@ func NewRootCmd(container *cli.Container) *cobra.Command {
 			fmt.Println("")
 			themeManager.GetCurrentTheme().Warning().Println("Please run 'echoy init' to set up your assistant.")
 
-			telemetryEvent.SendTelemetryEvent(
-				cm.Context(),
-				container.Config,
-				"cmd.root.execute",
-				telemetry.SeverityInfo,
-				"Root command executed",
-				nil,
-			)
+			if container.ConfigFromFile.UsageTracking.Enabled {
+				telemetryEvent.SendTelemetryEvent(
+					cm.Context(),
+					container.Config,
+					"cmd.root.execute",
+					telemetry.SeverityInfo,
+					"Root command executed",
+					nil,
+				)
+			}
 
 			return nil
 		},

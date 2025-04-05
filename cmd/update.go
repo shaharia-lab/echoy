@@ -14,21 +14,23 @@ import (
 )
 
 // NewUpdateCmd creates a new update command
-func NewUpdateCmd(appCfg *config.AppConfig, themeManager *theme.Manager) *cobra.Command {
+func NewUpdateCmd(config config.Config, appCfg *config.AppConfig, themeManager *theme.Manager) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Version: appCfg.Version.VersionText(),
 		Use:     "update",
 		Short:   "Check for updates and update the CLI",
 		Long:    "Check for updates and if a new version is available, download and install it",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			telemetryEvent.SendTelemetryEvent(
-				cmd.Context(),
-				appCfg,
-				"cmd.update",
-				telemetry.SeverityInfo,
-				"Start updating the CLI",
-				nil,
-			)
+			if config.UsageTracking.Enabled {
+				telemetryEvent.SendTelemetryEvent(
+					cmd.Context(),
+					appCfg,
+					"cmd.update",
+					telemetry.SeverityInfo,
+					"Start updating the CLI",
+					nil,
+				)
+			}
 
 			return runUpdate(themeManager.GetCurrentTheme(), appCfg.Repository, appCfg.Version.Version)
 		},

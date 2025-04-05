@@ -5,6 +5,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
@@ -90,6 +91,12 @@ func (i *Initializer) Run() error {
 	if err != nil {
 		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
 		return fmt.Errorf("error configuring LLM: %v", err)
+	}
+
+	err = telemetry.Configure(i.cliTheme, &i.Config)
+	if err != nil {
+		i.log.Error(fmt.Sprintf("error configuring telemetry: %v", err))
+		return fmt.Errorf("error configuring telemetry: %v", err)
 	}
 
 	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))

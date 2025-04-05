@@ -12,20 +12,22 @@ import (
 )
 
 // NewCmd creates an interactive init command
-func NewCmd(config *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
+func NewCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
 	cmd := &cobra.Command{
-		Version: config.Version.VersionText(),
+		Version: appConfig.Version.VersionText(),
 		Use:     "init",
 		Short:   "Initialize the Echoy with a guided setup",
 		Long:    `Start an interactive wizard to configure Echoy with a series of questions.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			telemetryEvent.SendTelemetryEvent(
-				context.Background(),
-				config,
-				"cmd.init",
-				telemetry.SeverityInfo, "Starting initialization",
-				nil,
-			)
+			if config.UsageTracking.Enabled {
+				telemetryEvent.SendTelemetryEvent(
+					context.Background(),
+					appConfig,
+					"cmd.init",
+					telemetry.SeverityInfo, "Starting initialization",
+					nil,
+				)
+			}
 
 			logger.Info("Starting initialization...")
 			defer logger.Sync()
