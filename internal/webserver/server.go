@@ -4,12 +4,16 @@ package webserver
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
+
+// ShutdownTimeout defines how long to wait for server to gracefully shutdown
+const ShutdownTimeout = 10 * time.Second
 
 // WebServer represents a simple HTTP server
 type WebServer struct {
@@ -44,6 +48,10 @@ func (ws *WebServer) setupRoutes() {
 
 // Start initializes and starts the HTTP server
 func (ws *WebServer) Start() error {
+	if ws.server != nil {
+		return errors.New("server already running")
+	}
+
 	ws.setupRoutes()
 
 	ws.server = &http.Server{
@@ -52,26 +60,26 @@ func (ws *WebServer) Start() error {
 	}
 
 	go func() {
-		if err := ws.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			println("Error starting server:", err.Error())
+		if err := ws.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("HTTP server ListenAndServe error: %v", err)
 		}
 	}()
 
 	return nil
 }
 
-// Stop gracefully shuts down the server with a timeout
-func (ws *WebServer) Stop() error {
+// Stop gracefully shuts down the server and blocks until shutdown is complete or timeout occurs
+func (ws *WebServer) Stop(ctx context.Context) error {
 	if ws.server == nil {
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, ShutdownTimeout)
 	defer cancel()
 
-	if err := ws.server.Shutdown(ctx); err != nil {
-		return err
-	}
+	err := ws.server.Shutdown(shutdownCtx)
 
-	return nil
+	ws.server = nil
+
+	return err
 }
