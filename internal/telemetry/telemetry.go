@@ -22,6 +22,11 @@ func SendTelemetryEvent(ctx context.Context, appCfg *config.AppConfig, eventName
 	)
 	defer collector.Close()
 
+	var systemUUID string
+	if appCfg.SystemConfig != nil {
+		systemUUID = appCfg.SystemConfig.UUID
+	}
+
 	telemetryEvent := telemetry.Event{
 		Name:         eventName,
 		TraceID:      uuid.New().String(),
@@ -29,6 +34,7 @@ func SendTelemetryEvent(ctx context.Context, appCfg *config.AppConfig, eventName
 		SeverityText: severityText,
 		Body:         message,
 		Attributes: map[string]interface{}{
+			"system.uuid":        systemUUID,
 			"cli_version.code":   appCfg.Version.Version,
 			"cli_version.commit": appCfg.Version.Commit,
 			"cli_version.date":   appCfg.Version.Date,

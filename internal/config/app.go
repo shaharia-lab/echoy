@@ -10,11 +10,16 @@ type Repository struct {
 	Repo  string
 }
 
+type SystemConfig struct {
+	UUID string `json:"uuid"`
+}
+
 // AppConfig represents the configuration for the application
 type AppConfig struct {
-	Name       string
-	Repository Repository
-	Version    Version
+	Name         string
+	Repository   Repository
+	Version      Version
+	SystemConfig *SystemConfig
 }
 
 // Version represents the version information for the application
