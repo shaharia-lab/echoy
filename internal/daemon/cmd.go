@@ -16,8 +16,7 @@ import (
 )
 
 // NewRunCmd creates a command to run the daemon
-func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager) *cobra.Command {
-	var socketPath string
+func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
@@ -39,12 +38,7 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 			defer logger.Sync()
 
 			// Create daemon instance
-			daemon := NewDaemon()
-
-			// Apply custom socket path if specified
-			if socketPath != "" {
-				daemon.SocketPath = socketPath
-			}
+			daemon := NewDaemon(socketPath)
 
 			// Create a context that can be canceled
 			ctx, cancel := context.WithCancel(context.Background())
@@ -70,7 +64,6 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 			themeManager.GetCurrentTheme().Success().Printf("Daemon started and listening on %s\n", daemon.SocketPath)
 			logger.Info(fmt.Sprintf("Daemon started and listening on %s", daemon.SocketPath))
 
-			// If not running in foreground, detach and exit
 			if !foreground {
 				logger.Info("Daemon running in background mode")
 				return nil
@@ -87,7 +80,6 @@ func NewRunCmd(config config.Config, appConfig *config.AppConfig, logger *logger
 	}
 
 	// Add command-specific flags
-	cmd.Flags().StringVar(&socketPath, "socket", "", fmt.Sprintf("Custom socket path (default: %s)", DefaultSocketPath))
 	cmd.Flags().BoolVarP(&foreground, "foreground", "f", false, "Run daemon in foreground (don't detach)")
 
 	return cmd

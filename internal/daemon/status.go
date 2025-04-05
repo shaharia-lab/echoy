@@ -17,9 +17,7 @@ import (
 )
 
 // NewStatusCmd creates a command to check the daemon status
-func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager) *cobra.Command {
-	var socketPath string
-
+func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Check the status of the Echoy daemon",
@@ -37,12 +35,6 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 
 			logger.Info("Checking daemon status...")
 			defer logger.Sync()
-
-			// If no custom socket path provided, use the default
-			if socketPath == "" {
-				// Use the same socket path resolution logic as in NewDaemon()
-				socketPath = resolveSocketPath(DefaultSocketPath)
-			}
 
 			// Try to connect to the daemon socket
 			conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
@@ -83,10 +75,6 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			return nil
 		},
 	}
-
-	// Add command-specific flags
-	cmd.Flags().StringVar(&socketPath, "socket", "", fmt.Sprintf("Custom socket path (default: %s)", DefaultSocketPath))
-
 	return cmd
 }
 

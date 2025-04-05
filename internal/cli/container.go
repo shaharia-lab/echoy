@@ -7,6 +7,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	"path"
 )
 
 // Container holds all application dependencies
@@ -18,6 +19,7 @@ type Container struct {
 	ThemeMgr       *theme.Manager
 	Initializer    *initializer.Initializer
 	ConfigFromFile config.Config
+	SocketFilePath string
 }
 
 // InitOptions contains options for initialization
@@ -65,6 +67,8 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	if container.Paths[filesystem.ConfigFilePath] == "" {
 		return container, fmt.Errorf("config file path is required")
 	}
+
+	container.SocketFilePath = path.Join(container.Paths[filesystem.AppDirectory], "echoy.sock")
 
 	loggerConfig := logger.Config{
 		FilePath: container.Paths[filesystem.LogsFilePath],

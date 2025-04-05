@@ -15,9 +15,7 @@ import (
 )
 
 // NewStopCmd creates a command to stop the running daemon
-func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager) *cobra.Command {
-	var socketPath string
-
+func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop the running Echoy daemon",
@@ -35,11 +33,6 @@ func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logge
 
 			logger.Info("Stopping daemon...")
 			defer logger.Sync()
-
-			// If no custom socket path provided, use the default
-			if socketPath == "" {
-				socketPath = resolveSocketPath(DefaultSocketPath)
-			}
 
 			// Connect to the daemon socket
 			conn, err := net.DialTimeout("unix", socketPath, 5*time.Second)
@@ -71,9 +64,6 @@ func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logge
 			return nil
 		},
 	}
-
-	// Add command-specific flags
-	cmd.Flags().StringVar(&socketPath, "socket", "", fmt.Sprintf("Custom socket path (default: %s)", DefaultSocketPath))
 
 	return cmd
 }

@@ -24,9 +24,7 @@ type Daemon struct {
 }
 
 // NewDaemon creates a new Daemon instance with default configuration
-func NewDaemon() *Daemon {
-	socketPath := ResolveSocketPath(DefaultSocketPath)
-
+func NewDaemon(socketPath string) *Daemon {
 	return &Daemon{
 		SocketPath:  socketPath,
 		stopChan:    make(chan struct{}),
@@ -150,8 +148,8 @@ func (d *Daemon) Stop() {
 }
 
 // Run starts the daemon and blocks until it's stopped
-func Run(ctx context.Context) error {
-	daemon := NewDaemon()
+func Run(ctx context.Context, socketPath string) error {
+	daemon := NewDaemon(socketPath)
 
 	if err := daemon.Start(); err != nil {
 		return err
