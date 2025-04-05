@@ -10,8 +10,6 @@ import (
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 	"net"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -36,7 +34,6 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			logger.Info("Checking daemon status...")
 			defer logger.Sync()
 
-			// Try to connect to the daemon socket
 			conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
 			if err != nil {
 				logger.Info("Daemon is not running")
@@ -45,7 +42,6 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			}
 			defer conn.Close()
 
-			// Send a PING command to verify it's responsive
 			_, err = conn.Write([]byte("PING\n"))
 			if err != nil {
 				logger.Warn(fmt.Sprintf("Daemon socket exists but may not be responsive: %v", err))
@@ -55,7 +51,10 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 
 			// Read response
 			buffer := make([]byte, 128)
-			conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+			if err != nil {
+				return err
+			}
 			n, err := conn.Read(buffer)
 			if err != nil || n == 0 {
 				logger.Warn("Daemon did not respond to ping")
@@ -76,41 +75,4 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 		},
 	}
 	return cmd
-}
-
-// ResolveSocketPath converts template paths into actual file paths
-// It handles environment variables and user directories
-func ResolveSocketPath(templatePath string) string {
-	socketPath := templatePath
-
-	// Handle $HOME variable replacement, matching NewDaemon's logic
-	if strings.Contains(socketPath, "$HOME") {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			socketPath = strings.Replace(socketPath, "$HOME", home, 1)
-		}
-	}
-
-	// Also handle XDG_RUNTIME_DIR if present in the path
-	if strings.Contains(socketPath, "$XDG_RUNTIME_DIR") {
-		runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
-		if runtimeDir == "" {
-			// Fallback if XDG_RUNTIME_DIR is not set
-			home, err := os.UserHomeDir()
-			if err == nil {
-				runtimeDir = filepath.Join(home, ".echoy")
-			} else {
-				// Ultimate fallback
-				runtimeDir = "/tmp"
-			}
-		}
-		socketPath = strings.Replace(socketPath, "$XDG_RUNTIME_DIR", runtimeDir, 1)
-	}
-
-	return socketPath
-}
-
-// resolveSocketPath is an alias for backward compatibility
-func resolveSocketPath(templatePath string) string {
-	return ResolveSocketPath(templatePath)
 }

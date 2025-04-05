@@ -12,9 +12,6 @@ import (
 	"time"
 )
 
-// DefaultSocketPath is the default location for the daemon's Unix socket
-const DefaultSocketPath = "$HOME/.echoy/echoy.sock"
-
 // Daemon represents a Unix socket daemon service
 type Daemon struct {
 	SocketPath  string
@@ -34,7 +31,6 @@ func NewDaemon(socketPath string) *Daemon {
 
 // Start initializes and runs the daemon
 func (d *Daemon) Start() error {
-	// Ensure socket doesn't already exist
 	if err := os.RemoveAll(d.SocketPath); err != nil {
 		return fmt.Errorf("failed to remove existing socket: %w", err)
 	}
@@ -45,7 +41,6 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("failed to listen on socket: %w", err)
 	}
 
-	// Set appropriate permissions for the socket file
 	if err := os.Chmod(d.SocketPath, 0660); err != nil {
 		d.listener.Close()
 		return fmt.Errorf("failed to set socket permissions: %w", err)
@@ -53,7 +48,6 @@ func (d *Daemon) Start() error {
 
 	fmt.Printf("Daemon started, listening on %s\n", d.SocketPath)
 
-	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -80,7 +74,6 @@ func (d *Daemon) acceptConnections() {
 				continue
 			}
 
-			// Track the connection
 			d.connections[conn] = struct{}{}
 			go d.handleConnection(conn)
 		}
@@ -108,14 +101,11 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 
 	switch command {
 	case "STOP":
-		// Existing STOP command handler
 		conn.Write([]byte("Stopping daemon\n"))
 		go d.Stop()
 	case "PING":
-		// New PING command handler for status checks
 		conn.Write([]byte("PONG\n"))
 	default:
-		// Handle other commands...
 		fmt.Println("Received command:", command)
 	}
 }
