@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/webserver"
 	"os"
 	"os/signal"
 	"syscall"
@@ -38,6 +39,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 			defer logger.Sync()
 
 			daemon := NewDaemon(socketPath)
+			daemon.WithWebServer(webserver.NewWebServer("10222"))
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

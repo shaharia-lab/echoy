@@ -4,20 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/webserver"
 	"net"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
 
-// Daemon represents a Unix socket daemon service
+// Daemon represents a Unix socket daemon service with an optional web server
 type Daemon struct {
 	SocketPath  string
+	webServer   *webserver.WebServer
 	listener    net.Listener
 	stopChan    chan struct{}
 	connections map[net.Conn]struct{}
+	wg          sync.WaitGroup
 }
 
 // NewDaemon creates a new Daemon instance with default configuration
@@ -27,6 +31,12 @@ func NewDaemon(socketPath string) *Daemon {
 		stopChan:    make(chan struct{}),
 		connections: make(map[net.Conn]struct{}),
 	}
+}
+
+// WithWebServer attaches a webserver to the daemon
+func (d *Daemon) WithWebServer(ws *webserver.WebServer) *Daemon {
+	d.webServer = ws
+	return d
 }
 
 // Start initializes and runs the daemon
@@ -46,12 +56,26 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("failed to set socket permissions: %w", err)
 	}
 
+	// Start webserver if configured
+	if d.webServer != nil {
+		if err := d.webServer.Start(); err != nil {
+			d.listener.Close()
+			return fmt.Errorf("failed to start web server: %w", err)
+		}
+		fmt.Println("Web server started")
+	}
+
 	fmt.Printf("Daemon started, listening on %s\n", d.SocketPath)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	go d.acceptConnections()
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		d.acceptConnections()
+	}()
+
 	go d.handleSignals(sigChan)
 
 	return nil
@@ -119,10 +143,15 @@ func (d *Daemon) handleSignals(sigChan chan os.Signal) {
 
 // Stop gracefully shuts down the daemon
 func (d *Daemon) Stop() {
-	// Signal the accept loop to stop
-	close(d.stopChan)
+	// Only run stop sequence once
+	select {
+	case <-d.stopChan:
+		return
+	default:
+		close(d.stopChan)
+	}
 
-	// Close listener
+	// First, stop accepting new connections
 	if d.listener != nil {
 		d.listener.Close()
 	}
@@ -132,14 +161,35 @@ func (d *Daemon) Stop() {
 		conn.Close()
 	}
 
+	// Wait for acceptConnections goroutine to finish
+	d.wg.Wait()
+
+	// Stop the web server if it's running
+	if d.webServer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := d.webServer.Stop(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Error stopping web server: %v\n", err)
+		} else {
+			fmt.Println("Web server stopped")
+		}
+	}
+
 	// Clean up socket file
 	os.RemoveAll(d.SocketPath)
 	fmt.Println("Daemon stopped")
 }
 
 // Run starts the daemon and blocks until it's stopped
-func Run(ctx context.Context, socketPath string) error {
+func Run(ctx context.Context, socketPath string, apiPort string) error {
 	daemon := NewDaemon(socketPath)
+
+	// Only configure webserver if API port is provided
+	if apiPort != "" {
+		ws := webserver.NewWebServer(apiPort)
+		daemon.WithWebServer(ws)
+	}
 
 	if err := daemon.Start(); err != nil {
 		return err
