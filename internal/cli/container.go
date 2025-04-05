@@ -71,6 +71,13 @@ func NewContainer(opts InitOptions) (*Container, error) {
 		LogLevel: logger.DebugLevel,
 	}
 
+	systemConfig, err := container.Filesystem.GetSystemConfig()
+	if err != nil {
+		return container, fmt.Errorf("failed to get system config: %w", err)
+	}
+
+	container.Config.SystemConfig = systemConfig
+
 	container.Logger, err = logger.NewLogger(loggerConfig)
 	if err != nil {
 		return container, fmt.Errorf("failed to initialize logger: %w", err)

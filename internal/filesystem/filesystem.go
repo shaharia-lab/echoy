@@ -3,7 +3,9 @@ package filesystem
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/sirupsen/logrus"
@@ -105,6 +107,21 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 	}
 	paths[ChatHistoryDB] = chatHistoryDBFilePath
 
+	systemFilePath := filepath.Join(dataDir, "system.json")
+	if _, err := os.Stat(systemFilePath); os.IsNotExist(err) {
+		file, err := os.Create(systemFilePath)
+		if err != nil {
+			return paths, err
+		}
+		defer file.Close()
+
+		uid := uuid.New().String()
+		systemData := fmt.Sprintf(`{"uuid": "%s"}`, uid)
+		if _, err := file.Write([]byte(systemData)); err != nil {
+			return paths, err
+		}
+	}
+
 	configFilePath := filepath.Join(configDir, configYamlFileName)
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
 		if _, err := os.Create(configFilePath); err != nil {
@@ -173,4 +190,27 @@ func (s *Filesystem) getUserHomeDirectory() (string, error) {
 	}
 
 	return homeDir, nil
+}
+
+// GetSystemConfig returns the content of system.json file as a SystemConfig struct
+func (s *Filesystem) GetSystemConfig() (*config.SystemConfig, error) {
+	paths, err := s.EnsureAllPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	dataDir := paths[DataDirectory]
+	systemFilePath := filepath.Join(dataDir, "system.json")
+
+	data, err := os.ReadFile(systemFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var systemConfig config.SystemConfig
+	if err := json.Unmarshal(data, &systemConfig); err != nil {
+		return nil, err
+	}
+
+	return &systemConfig, nil
 }
