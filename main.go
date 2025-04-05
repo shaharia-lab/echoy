@@ -6,6 +6,7 @@ import (
 	"github.com/shaharia-lab/echoy/cmd"
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/cli"
+	"github.com/shaharia-lab/echoy/internal/daemon"
 	"github.com/shaharia-lab/echoy/internal/initializer"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
@@ -43,6 +44,9 @@ func main() {
 		initializer.NewCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.Initializer),
 		chat.NewChatCmd(cliContainer),
 		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
+		daemon.NewRunCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr),
+		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr),
+		daemon.NewStatusCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr),
 	)
 
 	// execute the command
