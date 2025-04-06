@@ -3,7 +3,6 @@ package daemon
 import (
 	"context"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 )
 
@@ -37,64 +37,32 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			logger.Info("Checking daemon status...")
 			defer logger.Sync()
 
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetHeader([]string{"Component", "Status", "Details"})
-			table.SetBorder(false)
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
-			table.SetHeaderColor(
-				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
-				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
-				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
-			)
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+
+			fmt.Fprintln(w, "COMPONENT\tSTATUS\tDETAILS")
 
 			daemonStatus, daemonResponsive := checkDaemonStatus(socketPath)
 
-			var daemonStatusColor []tablewriter.Colors
 			if daemonResponsive {
-				daemonStatusColor = []tablewriter.Colors{
-					{},
-					{tablewriter.Bold, tablewriter.FgGreenColor},
-					{},
-				}
-				table.Rich([]string{"Daemon", "Running", "-"}, daemonStatusColor)
+				fmt.Fprintln(w, fmt.Sprintf("daemon\trunning\t-"))
 			} else {
-				daemonStatusColor = []tablewriter.Colors{
-					{},
-					{tablewriter.Bold, tablewriter.FgRedColor},
-					{},
-				}
-				table.Rich([]string{"Daemon", daemonStatus, "-"}, daemonStatusColor)
-				table.Render()
+				fmt.Fprintln(w, fmt.Sprintf("daemon\t%s\t-", daemonStatus))
+				w.Flush()
+
+				themeManager.GetCurrentTheme().Warning().Println("\nDaemon is not running. Start it with 'echoy daemon start'")
 				return nil
 			}
 
 			webServerPort := "10222"
 			webServerStatus, webServerDetails := checkWebServerStatus(webServerPort)
+			fmt.Fprintln(w, fmt.Sprintf("webserver\t%s\t%s", webServerStatus, webServerDetails))
 
-			var webServerStatusColor []tablewriter.Colors
-			if webServerStatus == "Running" {
-				webServerStatusColor = []tablewriter.Colors{
-					{},
-					{tablewriter.Bold, tablewriter.FgGreenColor},
-					{},
-				}
+			w.Flush()
+
+			if webServerStatus == "running" {
+				themeManager.GetCurrentTheme().Success().Println("\nAll components are running correctly")
 			} else {
-				webServerStatusColor = []tablewriter.Colors{
-					{},
-					{tablewriter.Bold, tablewriter.FgRedColor},
-					{},
-				}
-			}
-
-			table.Rich([]string{"WebServer", webServerStatus, webServerDetails}, webServerStatusColor)
-
-			table.Render()
-
-			if daemonResponsive && webServerStatus == "Running" {
-				logger.Info("All components are running properly")
-			} else {
-				logger.Warn("Some components are not running properly")
+				themeManager.GetCurrentTheme().Warning().Println("\nSome components are not running correctly")
 			}
 
 			return nil
@@ -107,34 +75,35 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 func checkDaemonStatus(socketPath string) (string, bool) {
 	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
 	if err != nil {
-		return "Not running", false
+		return "not running", false
 	}
 	defer conn.Close()
 
 	_, err = conn.Write([]byte("PING\n"))
 	if err != nil {
-		return "Socket exists but not responsive", false
+		return "not responsive", false
 	}
 
 	buffer := make([]byte, 128)
 	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if err != nil {
-		return "Socket error", false
+		return "socket error", false
 	}
 
 	n, err := conn.Read(buffer)
 	if err != nil || n == 0 {
-		return "Not responding to commands", false
+		return "not responding", false
 	}
 
 	response := string(buffer[:n])
 	if strings.TrimSpace(response) == "PONG" {
-		return "Running", true
+		return "running", true
 	}
 
-	return "Unexpected response", false
+	return "unexpected response", false
 }
 
+// checkWebServerStatus verifies if the webserver is running
 func checkWebServerStatus(port string) (string, string) {
 	client := http.Client{
 		Timeout: 2 * time.Second,
@@ -142,13 +111,13 @@ func checkWebServerStatus(port string) (string, string) {
 
 	resp, err := client.Get(fmt.Sprintf("http://localhost:%s/ping", port))
 	if err != nil {
-		return "Not running", "-"
+		return "not running", "-"
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		return "Running", fmt.Sprintf("Port %s", port)
+		return "running", fmt.Sprintf("port %s", port)
 	}
 
-	return "Error", fmt.Sprintf("Returned status %d", resp.StatusCode)
+	return "error", fmt.Sprintf("status %d", resp.StatusCode)
 }
