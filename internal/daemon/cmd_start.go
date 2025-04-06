@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"github.com/shaharia-lab/echoy/internal/webserver"
 	"github.com/shaharia-lab/goai/mcp"
@@ -88,6 +89,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				"10222",
 				"/home/shaharia/Projects/echoy-webui/dist",
 				tools.NewProvider(ts),
+				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 			)
 			daemon.WithWebServer(ws)
 

@@ -4,6 +4,7 @@ package webserver
 import (
 	"context"
 	"errors"
+	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"log"
 	"net/http"
@@ -24,10 +25,16 @@ type WebServer struct {
 	router             *chi.Mux
 	webStaticDirectory string
 	toolsProvider      *tools.Provider
+	llmHandler         *llm.LLMHandler
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
-func NewWebServer(apiPort string, webStaticDirectory string, toolsProvider *tools.Provider) *WebServer {
+func NewWebServer(
+	apiPort string,
+	webStaticDirectory string,
+	toolsProvider *tools.Provider,
+	llmHandler *llm.LLMHandler,
+) *WebServer {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -45,6 +52,7 @@ func NewWebServer(apiPort string, webStaticDirectory string, toolsProvider *tool
 		router:             r,
 		webStaticDirectory: webStaticDirectory,
 		toolsProvider:      toolsProvider,
+		llmHandler:         llmHandler,
 	}
 }
 
@@ -76,6 +84,10 @@ func (ws *WebServer) setupRoutes() {
 	// tools related routes
 	ws.router.Get("/api/v1/tools", ws.toolsProvider.ListToolsHTTPHandler())
 	ws.router.Get("/api/v1/tools/{name}", ws.toolsProvider.GetToolByNameHTTPHandler())
+
+	// LLM related routes
+	ws.router.Get("/api/v1/llm/providers", ws.llmHandler.ListProvidersHTTPHandler())
+	ws.router.Get("/api/v1/llm/providers/{id}", ws.llmHandler.GetProviderByIDHTTPHandler())
 }
 
 // Start initializes and starts the HTTP server
