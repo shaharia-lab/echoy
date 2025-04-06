@@ -26,6 +26,9 @@ const (
 	// CacheDirectory represents the cache directory
 	CacheDirectory PathType = "cache"
 
+	// CacheWebuiBuild represents the cache webui build directory. i.e: cache/webui_build
+	CacheWebuiBuild PathType = "cache_webui_build"
+
 	// ConfigDirectory represents the config directory
 	ConfigDirectory PathType = "config"
 
@@ -121,6 +124,15 @@ func (s *Filesystem) EnsureAllPaths() (map[PathType]string, error) {
 			return paths, err
 		}
 	}
+
+	// webui frontend
+	frontendDir := filepath.Join(cacheDir, "webui_build")
+	if _, err := os.Stat(frontendDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(frontendDir, 0755); err != nil {
+			return paths, err
+		}
+	}
+	paths[CacheWebuiBuild] = frontendDir
 
 	configFilePath := filepath.Join(configDir, configYamlFileName)
 	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {

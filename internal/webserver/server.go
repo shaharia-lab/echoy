@@ -9,6 +9,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,6 +19,7 @@ import (
 
 // ShutdownTimeout defines how long to wait for server to gracefully shutdown
 const ShutdownTimeout = 10 * time.Second
+const frontendBuildDirectoryName = "dist"
 
 // WebServer represents a simple HTTP server
 type WebServer struct {
@@ -81,7 +83,7 @@ func (ws *WebServer) setupRoutes() {
 	})
 
 	// Serve static files from the dist directory
-	fileServer := http.FileServer(http.Dir(ws.webStaticDirectory))
+	fileServer := http.FileServer(http.Dir(filepath.Join(ws.webStaticDirectory, frontendBuildDirectoryName)))
 	ws.router.Handle("/web", http.StripPrefix("/web", fileServer))
 	ws.router.Handle("/web/*", http.StripPrefix("/web", fileServer))
 
