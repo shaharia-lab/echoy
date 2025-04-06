@@ -214,7 +214,6 @@ func (d *FrontendReleaseDownloader) cleanDestinationDirectory() error {
 		return fmt.Errorf("failed to read destination directory: %w", err)
 	}
 
-	// Remove each entry
 	for _, entry := range entries {
 		path := filepath.Join(d.DestinationDirectory, entry.Name())
 		err := os.RemoveAll(path)
@@ -233,17 +232,14 @@ func (d *FrontendReleaseDownloader) extractZip(zipPath string) error {
 	}
 	defer reader.Close()
 
-	// Clean destination directory before extraction
 	if err := d.cleanDestinationDirectory(); err != nil {
 		return err
 	}
 
-	// Create destination directory if it doesn't exist
 	if err := os.MkdirAll(d.DestinationDirectory, 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Extract each file
 	for _, file := range reader.File {
 		path := filepath.Join(d.DestinationDirectory, file.Name)
 
@@ -287,20 +283,17 @@ func (d *FrontendReleaseDownloader) extractZip(zipPath string) error {
 }
 
 func (d *FrontendReleaseDownloader) DownloadFrontend() error {
-	// Get download URL for the specified or latest release
 	downloadURL, err := d.getDownloadURL()
 	if err != nil {
 		return fmt.Errorf("failed to get download URL: %w", err)
 	}
 
-	// Download the zip asset
 	zipPath, err := d.downloadAsset(downloadURL)
 	if err != nil {
 		return fmt.Errorf("failed to download frontend asset: %w", err)
 	}
-	defer os.Remove(zipPath) // Clean up temp file after extraction
+	defer os.Remove(zipPath)
 
-	// Extract the zip to the destination directory
 	if err := d.extractZip(zipPath); err != nil {
 		return fmt.Errorf("failed to extract frontend: %w", err)
 	}
