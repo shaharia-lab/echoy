@@ -4,6 +4,7 @@ package webserver
 import (
 	"context"
 	"errors"
+	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"log"
@@ -26,6 +27,7 @@ type WebServer struct {
 	webStaticDirectory string
 	toolsProvider      *tools.Provider
 	llmHandler         *llm.LLMHandler
+	chatHandler        *chat.ChatHandler
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
@@ -34,6 +36,7 @@ func NewWebServer(
 	webStaticDirectory string,
 	toolsProvider *tools.Provider,
 	llmHandler *llm.LLMHandler,
+	chatHandler *chat.ChatHandler,
 ) *WebServer {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -53,6 +56,7 @@ func NewWebServer(
 		webStaticDirectory: webStaticDirectory,
 		toolsProvider:      toolsProvider,
 		llmHandler:         llmHandler,
+		chatHandler:        chatHandler,
 	}
 }
 
@@ -88,6 +92,12 @@ func (ws *WebServer) setupRoutes() {
 	// LLM related routes
 	ws.router.Get("/api/v1/llm/providers", ws.llmHandler.ListProvidersHTTPHandler())
 	ws.router.Get("/api/v1/llm/providers/{id}", ws.llmHandler.GetProviderByIDHTTPHandler())
+
+	// Chat related routes
+	ws.router.Post("/api/v1/chats", ws.chatHandler.HandleChatRequest())
+	ws.router.Get("/api/v1/chats", ws.chatHandler.HandleChatHistoryRequest())
+	ws.router.Get("/api/v1/chats/{chatId}", ws.chatHandler.HandleChatByIDRequest())
+	ws.router.Post("/api/v1/chats/stream", ws.chatHandler.HandleChatStreamRequest())
 }
 
 // Start initializes and starts the HTTP server

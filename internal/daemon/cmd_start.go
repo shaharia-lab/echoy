@@ -3,9 +3,11 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"github.com/shaharia-lab/echoy/internal/webserver"
+	"github.com/shaharia-lab/goai"
 	"github.com/shaharia-lab/goai/mcp"
 	"net"
 	"os"
@@ -85,11 +87,24 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				mcpTools.GetWeather,
 			}
 
+			llmService, err := llm.NewLLMService(config.LLM)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to create LLM service: %v", err))
+				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to create LLM service: %v", err))
+				return err
+			}
+
+			historyService := goai.NewInMemoryChatHistoryStorage()
+
+			chatService := chat.NewChatService(llmService, historyService)
+			chatHandler := chat.NewChatHandler(chatService)
+
 			ws := webserver.NewWebServer(
 				"10222",
 				"/home/shaharia/Projects/echoy-webui/dist",
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
+				chatHandler,
 			)
 			daemon.WithWebServer(ws)
 

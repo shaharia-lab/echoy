@@ -139,7 +139,7 @@ func (s *Session) processMessage(ctx context.Context, input string) error {
 	fmt.Print("\r                \r")
 
 	s.theme.Secondary().Print("AI > ")
-	s.theme.Subtle().Printf("%s\n", response.Text)
+	s.theme.Subtle().Printf("%s\n", response.Answer)
 
 	return nil
 }
