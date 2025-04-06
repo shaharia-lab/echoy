@@ -37,7 +37,6 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			logger.Info("Checking daemon status...")
 			defer logger.Sync()
 
-			// Initialize table
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetHeader([]string{"Component", "Status", "Details"})
 			table.SetBorder(false)
@@ -49,10 +48,8 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
 			)
 
-			// Check daemon status
 			daemonStatus, daemonResponsive := checkDaemonStatus(socketPath)
 
-			// Set daemon status color based on state
 			var daemonStatusColor []tablewriter.Colors
 			if daemonResponsive {
 				daemonStatusColor = []tablewriter.Colors{
@@ -72,11 +69,9 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 				return nil
 			}
 
-			// Check webserver status only if daemon is running
-			webServerPort := "10222" // Default port from cmd_start.go
+			webServerPort := "10222"
 			webServerStatus, webServerDetails := checkWebServerStatus(webServerPort)
 
-			// Set webserver status color based on state
 			var webServerStatusColor []tablewriter.Colors
 			if webServerStatus == "Running" {
 				webServerStatusColor = []tablewriter.Colors{
@@ -94,10 +89,8 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 
 			table.Rich([]string{"WebServer", webServerStatus, webServerDetails}, webServerStatusColor)
 
-			// Render the table
 			table.Render()
 
-			// Log complete status
 			if daemonResponsive && webServerStatus == "Running" {
 				logger.Info("All components are running properly")
 			} else {
@@ -123,7 +116,6 @@ func checkDaemonStatus(socketPath string) (string, bool) {
 		return "Socket exists but not responsive", false
 	}
 
-	// Read response
 	buffer := make([]byte, 128)
 	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 	if err != nil {
@@ -143,7 +135,6 @@ func checkDaemonStatus(socketPath string) (string, bool) {
 	return "Unexpected response", false
 }
 
-// checkWebServerStatus verifies if the webserver is running
 func checkWebServerStatus(port string) (string, string) {
 	client := http.Client{
 		Timeout: 2 * time.Second,
