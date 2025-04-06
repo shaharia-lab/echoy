@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/olekukonko/tablewriter"
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
@@ -13,7 +14,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"text/tabwriter"
 	"time"
 )
 
@@ -37,30 +37,65 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			logger.Info("Checking daemon status...")
 			defer logger.Sync()
 
-			// Prepare table writer
-			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "COMPONENT\tSTATUS\tDETAILS")
-			fmt.Fprintln(w, "---------\t------\t-------")
+			// Initialize table
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetHeader([]string{"Component", "Status", "Details"})
+			table.SetBorder(false)
+			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+			table.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
+			table.SetHeaderColor(
+				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
+				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
+				tablewriter.Colors{tablewriter.Bold, tablewriter.FgCyanColor},
+			)
 
 			// Check daemon status
 			daemonStatus, daemonResponsive := checkDaemonStatus(socketPath)
 
-			// Set daemon status based on responsiveness
+			// Set daemon status color based on state
+			var daemonStatusColor []tablewriter.Colors
 			if daemonResponsive {
-				fmt.Fprintln(w, "Daemon\tRunning\t-")
+				daemonStatusColor = []tablewriter.Colors{
+					{},
+					{tablewriter.Bold, tablewriter.FgGreenColor},
+					{},
+				}
+				table.Rich([]string{"Daemon", "Running", "-"}, daemonStatusColor)
 			} else {
-				fmt.Fprintln(w, fmt.Sprintf("Daemon\t%s\t-", daemonStatus))
-				w.Flush()
+				daemonStatusColor = []tablewriter.Colors{
+					{},
+					{tablewriter.Bold, tablewriter.FgRedColor},
+					{},
+				}
+				table.Rich([]string{"Daemon", daemonStatus, "-"}, daemonStatusColor)
+				table.Render()
 				return nil
 			}
 
 			// Check webserver status only if daemon is running
 			webServerPort := "10222" // Default port from cmd_start.go
 			webServerStatus, webServerDetails := checkWebServerStatus(webServerPort)
-			fmt.Fprintln(w, fmt.Sprintf("WebServer\t%s\t%s", webServerStatus, webServerDetails))
 
-			// Flush the tabwriter
-			w.Flush()
+			// Set webserver status color based on state
+			var webServerStatusColor []tablewriter.Colors
+			if webServerStatus == "Running" {
+				webServerStatusColor = []tablewriter.Colors{
+					{},
+					{tablewriter.Bold, tablewriter.FgGreenColor},
+					{},
+				}
+			} else {
+				webServerStatusColor = []tablewriter.Colors{
+					{},
+					{tablewriter.Bold, tablewriter.FgRedColor},
+					{},
+				}
+			}
+
+			table.Rich([]string{"WebServer", webServerStatus, webServerDetails}, webServerStatusColor)
+
+			// Render the table
+			table.Render()
 
 			// Log complete status
 			if daemonResponsive && webServerStatus == "Running" {
