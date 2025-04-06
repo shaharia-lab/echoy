@@ -13,12 +13,6 @@ func GetSupportedLLMProviders() []Provider {
 			ID:          "anthropic",
 			Name:        "Anthropic",
 			Description: "One of the leading AI/ML model providers",
-			ModelIDs: []string{
-				anthropic.ModelClaude3_7SonnetLatest,
-				anthropic.ModelClaude3_5HaikuLatest,
-				anthropic.ModelClaude3_5SonnetLatest,
-				anthropic.ModelClaude3OpusLatest,
-			},
 			Models: []Model{
 				{
 					Name:        "Claude 3.5 Haiku Latest",
