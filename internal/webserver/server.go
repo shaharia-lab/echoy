@@ -17,20 +17,22 @@ const ShutdownTimeout = 10 * time.Second
 
 // WebServer represents a simple HTTP server
 type WebServer struct {
-	APIPort string
-	server  *http.Server
-	router  *chi.Mux
+	APIPort            string
+	server             *http.Server
+	router             *chi.Mux
+	webStaticDirectory string
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
-func NewWebServer(apiPort string) *WebServer {
+func NewWebServer(apiPort string, webStaticDirectory string) *WebServer {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
 	return &WebServer{
-		APIPort: apiPort,
-		router:  r,
+		APIPort:            apiPort,
+		router:             r,
+		webStaticDirectory: webStaticDirectory,
 	}
 }
 
@@ -44,6 +46,21 @@ func (ws *WebServer) setupRoutes() {
 	ws.router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
 	})
+
+	ws.router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/web", http.StatusFound)
+	})
+
+	// Serve "/ping" endpoint
+	ws.router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("pong"))
+	})
+
+	// Serve static files from the dist directory
+	fileServer := http.FileServer(http.Dir(ws.webStaticDirectory))
+	ws.router.Handle("/web", http.StripPrefix("/web", fileServer))
+	ws.router.Handle("/web/*", http.StripPrefix("/web", fileServer))
+
 }
 
 // Start initializes and starts the HTTP server
@@ -60,7 +77,7 @@ func (ws *WebServer) Start() error {
 	}
 
 	go func() {
-		if err := ws.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := ws.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Printf("HTTP server ListenAndServe error: %v", err)
 		}
 	}()

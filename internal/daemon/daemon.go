@@ -180,23 +180,3 @@ func (d *Daemon) Stop() {
 	os.RemoveAll(d.SocketPath)
 	fmt.Println("Daemon stopped")
 }
-
-// Run starts the daemon and blocks until it's stopped
-func Run(ctx context.Context, socketPath string, apiPort string) error {
-	daemon := NewDaemon(socketPath)
-
-	// Only configure webserver if API port is provided
-	if apiPort != "" {
-		ws := webserver.NewWebServer(apiPort)
-		daemon.WithWebServer(ws)
-	}
-
-	if err := daemon.Start(); err != nil {
-		return err
-	}
-
-	// Wait for context cancellation
-	<-ctx.Done()
-	daemon.Stop()
-	return nil
-}

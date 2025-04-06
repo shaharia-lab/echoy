@@ -76,7 +76,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 
 			// From here on, we're in foreground mode
 			daemon := NewDaemon(socketPath)
-			daemon.WithWebServer(webserver.NewWebServer("10222"))
+			daemon.WithWebServer(webserver.NewWebServer("10222", "/home/shaharia/Projects/echoy-webui/dist"))
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
