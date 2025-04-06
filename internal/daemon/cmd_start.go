@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/webserver"
+	"net"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/shaharia-lab/echoy/internal/config"
 	"github.com/shaharia-lab/echoy/internal/logger"
@@ -38,6 +42,39 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 			logger.Info("Starting daemon...")
 			defer logger.Sync()
 
+			if !foreground {
+				if isRunning, _ := isDaemonRunning(socketPath); isRunning {
+					msg := "Daemon is already running"
+					logger.Info(msg)
+					themeManager.GetCurrentTheme().Info().Println(msg)
+					return nil
+				}
+
+				execPath, err := os.Executable()
+				if err != nil {
+					return fmt.Errorf("failed to get executable path: %w", err)
+				}
+
+				daemonCmd := exec.Command(execPath, "start", "--foreground")
+
+				daemonCmd.Stdout = nil
+				daemonCmd.Stderr = nil
+				daemonCmd.Stdin = nil
+
+				daemonCmd.SysProcAttr = &syscall.SysProcAttr{
+					Setpgid: true,
+					Pgid:    0,
+				}
+
+				if err := daemonCmd.Start(); err != nil {
+					return fmt.Errorf("failed to start daemon process: %w", err)
+				}
+
+				themeManager.GetCurrentTheme().Success().Println("Daemon started in background mode")
+				return nil
+			}
+
+			// From here on, we're in foreground mode
 			daemon := NewDaemon(socketPath)
 			daemon.WithWebServer(webserver.NewWebServer("10222"))
 
@@ -62,11 +99,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 			themeManager.GetCurrentTheme().Success().Printf("Daemon started and listening on %s\n", daemon.SocketPath)
 			logger.Info(fmt.Sprintf("Daemon started and listening on %s", daemon.SocketPath))
 
-			if !foreground {
-				logger.Info("Daemon running in background mode")
-				return nil
-			}
-
+			// Wait for cancellation
 			<-ctx.Done()
 			logger.Info("Stopping daemon...")
 			daemon.Stop()
@@ -79,4 +112,34 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 	cmd.Flags().BoolVarP(&foreground, "foreground", "f", false, "Run daemon in foreground (don't detach)")
 
 	return cmd
+}
+
+// isDaemonRunning checks if the daemon is currently running by attempting to connect to its socket
+func isDaemonRunning(socketPath string) (bool, error) {
+	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
+	if err != nil {
+		return false, nil
+	}
+	defer conn.Close()
+
+	// Try to ping the daemon
+	_, err = conn.Write([]byte("PING\n"))
+	if err != nil {
+		return false, err
+	}
+
+	// Read response
+	buffer := make([]byte, 128)
+	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if err != nil {
+		return false, err
+	}
+
+	n, err := conn.Read(buffer)
+	if err != nil {
+		return false, err
+	}
+
+	response := string(buffer[:n])
+	return strings.TrimSpace(response) == "PONG", nil
 }
