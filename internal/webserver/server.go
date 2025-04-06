@@ -4,12 +4,14 @@ package webserver
 import (
 	"context"
 	"errors"
+	"github.com/shaharia-lab/echoy/internal/tools"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 // ShutdownTimeout defines how long to wait for server to gracefully shutdown
@@ -21,11 +23,20 @@ type WebServer struct {
 	server             *http.Server
 	router             *chi.Mux
 	webStaticDirectory string
+	toolsProvider      *tools.Provider
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
-func NewWebServer(apiPort string, webStaticDirectory string) *WebServer {
+func NewWebServer(apiPort string, webStaticDirectory string, toolsProvider *tools.Provider) *WebServer {
 	r := chi.NewRouter()
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link", "X-MKit-Chat-UUID"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
@@ -33,6 +44,7 @@ func NewWebServer(apiPort string, webStaticDirectory string) *WebServer {
 		APIPort:            apiPort,
 		router:             r,
 		webStaticDirectory: webStaticDirectory,
+		toolsProvider:      toolsProvider,
 	}
 }
 
@@ -61,6 +73,9 @@ func (ws *WebServer) setupRoutes() {
 	ws.router.Handle("/web", http.StripPrefix("/web", fileServer))
 	ws.router.Handle("/web/*", http.StripPrefix("/web", fileServer))
 
+	// tools related routes
+	ws.router.Get("/api/v1/tools", ws.toolsProvider.ListToolsHTTPHandler())
+	ws.router.Get("/api/v1/tools/{name}", ws.toolsProvider.GetToolByNameHTTPHandler())
 }
 
 // Start initializes and starts the HTTP server

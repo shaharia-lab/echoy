@@ -3,7 +3,9 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/tools"
 	"github.com/shaharia-lab/echoy/internal/webserver"
+	"github.com/shaharia-lab/goai/mcp"
 	"net"
 	"os"
 	"os/exec"
@@ -16,6 +18,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	mcpTools "github.com/shaharia-lab/mcp-tools"
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
@@ -76,7 +79,17 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 
 			// From here on, we're in foreground mode
 			daemon := NewDaemon(socketPath)
-			daemon.WithWebServer(webserver.NewWebServer("10222", "/home/shaharia/Projects/echoy-webui/dist"))
+
+			ts := []mcp.Tool{
+				mcpTools.GetWeather,
+			}
+
+			ws := webserver.NewWebServer(
+				"10222",
+				"/home/shaharia/Projects/echoy-webui/dist",
+				tools.NewProvider(ts),
+			)
+			daemon.WithWebServer(ws)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
