@@ -53,6 +53,15 @@ brews:
     repository:
       owner: shaharia-lab
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+      branch: formula-update
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: shaharia-lab
+          name: homebrew-tap
+          branch: main
     directory: Formula
     install: |
       bin.install "echoy"
