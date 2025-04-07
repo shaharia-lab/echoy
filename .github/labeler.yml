@@ -1,5 +1,7 @@
 ci-workflow:
-  - .github/**
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
 
 documentation:
-  - README.md
+  - changed-files:
+      - any-glob-to-any-file: 'README.md'
