@@ -50,10 +50,10 @@ brews:
     homepage: https://github.com/shaharia-lab/echoy
     description: Echoy - intelligent & smart AI assistance for your daily life
     license: MIT
-    tap:
+    repository:
       owner: shaharia-lab
       name: homebrew-tap
-    folder: Formula
+    directory: Formula
     install: |
       bin.install "echoy"
     commit_author:
