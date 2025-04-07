@@ -68,10 +68,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				daemonCmd.Stderr = nil
 				daemonCmd.Stdin = nil
 
-				daemonCmd.SysProcAttr = &syscall.SysProcAttr{
-					Setpgid: true,
-					Pgid:    0,
-				}
+				setPlatformProcAttr(daemonCmd)
 
 				if err := daemonCmd.Start(); err != nil {
 					return fmt.Errorf("failed to start daemon process: %w", err)
