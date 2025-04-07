@@ -48,7 +48,10 @@ func ConfigureLLM(themeManager *theme.Manager, config *config.Config) error {
 	var modelOptions []string
 	for _, provider := range GetSupportedLLMProviders() {
 		if provider.Name == selectedProvider {
-			modelOptions = provider.ModelIDs
+			for _, model := range provider.Models {
+				modelOptions = append(modelOptions, model.ModelID)
+			}
+
 			providerID = provider.ID
 			break
 		}

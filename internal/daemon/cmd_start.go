@@ -3,7 +3,13 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/chat"
+	"github.com/shaharia-lab/echoy/internal/llm"
+	"github.com/shaharia-lab/echoy/internal/tools"
 	"github.com/shaharia-lab/echoy/internal/webserver"
+	"github.com/shaharia-lab/echoy/internal/webui"
+	"github.com/shaharia-lab/goai"
+	"github.com/shaharia-lab/goai/mcp"
 	"net"
 	"os"
 	"os/exec"
@@ -16,12 +22,13 @@ import (
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
+	mcpTools "github.com/shaharia-lab/mcp-tools"
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
+func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
@@ -76,7 +83,32 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 
 			// From here on, we're in foreground mode
 			daemon := NewDaemon(socketPath)
-			daemon.WithWebServer(webserver.NewWebServer("10222", "/home/shaharia/Projects/echoy-webui/dist"))
+
+			ts := []mcp.Tool{
+				mcpTools.GetWeather,
+			}
+
+			llmService, err := llm.NewLLMService(config.LLM)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to create LLM service: %v", err))
+				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to create LLM service: %v", err))
+				return err
+			}
+
+			historyService := goai.NewInMemoryChatHistoryStorage()
+
+			chatService := chat.NewChatService(llmService, historyService)
+			chatHandler := chat.NewChatHandler(chatService)
+
+			ws := webserver.NewWebServer(
+				"10222",
+				webUIStaticDirectory,
+				tools.NewProvider(ts),
+				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
+				chatHandler,
+				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory),
+			)
+			daemon.WithWebServer(ws)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
