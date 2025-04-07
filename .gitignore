@@ -2,4 +2,5 @@
 /echoy# Added by goreleaser init:
 dist/
 /coverage.out
+/coverage.html
 /echoy
