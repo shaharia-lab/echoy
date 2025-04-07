@@ -3,9 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/cli"
-	"github.com/shaharia-lab/echoy/internal/filesystem"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
-	"github.com/shaharia-lab/echoy/internal/webui"
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
@@ -35,12 +33,6 @@ func NewRootCmd(container *cli.Container) *cobra.Command {
 					"Root command executed",
 					nil,
 				)
-			}
-
-			nf := webui.NewFrontendReleaseDownloader("latest", container.Paths[filesystem.CacheWebuiBuild])
-			err := nf.DownloadFrontend()
-			if err != nil {
-				return err
 			}
 
 			return nil
