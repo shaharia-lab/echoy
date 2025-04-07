@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/shaharia-lab/echoy/internal/api"
+	"github.com/shaharia-lab/echoy/internal/chat/types"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/goai"
 	"time"
@@ -20,10 +21,10 @@ type HistoryService interface {
 
 // Service provides chat functionality using the LLM
 type Service interface {
-	Chat(ctx context.Context, sessionID uuid.UUID, message string) (ChatResponse, error)
+	Chat(ctx context.Context, sessionID uuid.UUID, message string) (types.ChatResponse, error)
 	ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error)
 	GetChatHistory(ctx context.Context, chatUUID uuid.UUID) (*goai.ChatHistory, error)
-	GetListChatHistories(ctx context.Context) (ChatHistoryList, error)
+	GetListChatHistories(ctx context.Context) (types.ChatHistoryList, error)
 }
 
 // ServiceImpl implements the ChatService interface
@@ -41,7 +42,7 @@ func NewChatService(llmService llm.Service, historyService HistoryService) *Serv
 }
 
 // Chat provides non-streaming chat functionality
-func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message string) (ChatResponse, error) {
+func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message string) (types.ChatResponse, error) {
 	userMessage := goai.LLMMessage{
 		Role: goai.UserRole,
 		Text: message,
@@ -50,7 +51,7 @@ func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message str
 	if sessionID == uuid.Nil {
 		chatHistory, err := s.historyService.CreateChat(ctx)
 		if err != nil {
-			return ChatResponse{}, fmt.Errorf("failed to create chat session: %w", err)
+			return types.ChatResponse{}, fmt.Errorf("failed to create chat session: %w", err)
 		}
 
 		sessionID = chatHistory.UUID
@@ -60,12 +61,12 @@ func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message str
 		LLMMessage:  userMessage,
 		GeneratedAt: time.Now().UTC(),
 	}); err != nil {
-		return ChatResponse{}, fmt.Errorf("failed to add message to chat history: %w", err)
+		return types.ChatResponse{}, fmt.Errorf("failed to add message to chat history: %w", err)
 	}
 
 	llmResponse, err := s.llmService.Generate(ctx, []goai.LLMMessage{userMessage})
 	if err != nil {
-		return ChatResponse{}, fmt.Errorf("failed to generate response: %w", err)
+		return types.ChatResponse{}, fmt.Errorf("failed to generate response: %w", err)
 	}
 
 	err = s.historyService.AddMessage(ctx, sessionID, goai.ChatHistoryMessage{
@@ -76,10 +77,10 @@ func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message str
 		GeneratedAt: time.Now().UTC(),
 	})
 	if err != nil {
-		return ChatResponse{}, fmt.Errorf("failed to add response to chat history: %w", err)
+		return types.ChatResponse{}, fmt.Errorf("failed to add response to chat history: %w", err)
 	}
 
-	return ChatResponse{
+	return types.ChatResponse{
 		ChatUUID:    sessionID,
 		Answer:      llmResponse.Text,
 		InputToken:  llmResponse.TotalInputToken,
@@ -98,13 +99,13 @@ func (s *ServiceImpl) GetChatHistory(ctx context.Context, chatUUID uuid.UUID) (*
 }
 
 // GetListChatHistories retrieves all chat histories
-func (s *ServiceImpl) GetListChatHistories(ctx context.Context) (ChatHistoryList, error) {
+func (s *ServiceImpl) GetListChatHistories(ctx context.Context) (types.ChatHistoryList, error) {
 	chatHistories, err := s.historyService.ListChatHistories(ctx)
 	if err != nil {
-		return ChatHistoryList{}, fmt.Errorf("failed to list chat histories: %w", err)
+		return types.ChatHistoryList{}, fmt.Errorf("failed to list chat histories: %w", err)
 	}
 
-	return ChatHistoryList{
+	return types.ChatHistoryList{
 		Chats: chatHistories,
 		Pagination: api.Pagination{
 			Page:    1,

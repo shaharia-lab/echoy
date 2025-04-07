@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/shaharia-lab/echoy/internal/chat/mocks"
+	mocks2 "github.com/shaharia-lab/echoy/internal/llm/mocks"
 	"github.com/shaharia-lab/goai"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -57,7 +58,7 @@ func TestServiceImpl_Chat(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHistoryService := new(mocks.MockHistoryService)
-			mockLLMService := new(mocks.MockLLMService)
+			mockLLMService := new(mocks2.MockService)
 
 			chatService := NewChatService(mockLLMService, mockHistoryService)
 
@@ -92,7 +93,7 @@ func TestServiceImpl_Chat(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tc.mockLLMResponse, response)
+				assert.Equal(t, tc.mockLLMResponse.Text, response.Answer)
 			}
 
 			mockHistoryService.AssertExpectations(t)
@@ -135,7 +136,7 @@ func TestServiceImpl_ChatStreaming(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockHistoryService := new(mocks.MockHistoryService)
-			mockLLMService := new(mocks.MockLLMService)
+			mockLLMService := new(mocks2.MockService)
 			chatService := NewChatService(mockLLMService, mockHistoryService)
 
 			ctx := context.Background()
@@ -232,7 +233,7 @@ func TestServiceImpl_ChatStreaming(t *testing.T) {
 func TestProcessStreamingResponse(t *testing.T) {
 	t.Run("successful processing", func(t *testing.T) {
 		mockHistoryService := new(mocks.MockHistoryService)
-		mockLLMService := new(mocks.MockLLMService)
+		mockLLMService := new(mocks2.MockService)
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()
@@ -258,7 +259,7 @@ func TestProcessStreamingResponse(t *testing.T) {
 
 	t.Run("processing with errors", func(t *testing.T) {
 		mockHistoryService := new(mocks.MockHistoryService)
-		mockLLMService := new(mocks.MockLLMService)
+		mockLLMService := new(mocks2.MockService)
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()
@@ -284,7 +285,7 @@ func TestProcessStreamingResponse(t *testing.T) {
 
 	t.Run("error saving to history", func(t *testing.T) {
 		mockHistoryService := new(mocks.MockHistoryService)
-		mockLLMService := new(mocks.MockLLMService)
+		mockLLMService := new(mocks2.MockService)
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()

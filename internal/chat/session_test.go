@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	chatMock "github.com/shaharia-lab/echoy/internal/chat/mocks"
+	"github.com/shaharia-lab/echoy/internal/chat/types"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/shaharia-lab/echoy/internal/theme/mocks"
 	"strings"
@@ -105,8 +106,11 @@ func TestProcessMessage(t *testing.T) {
 
 	ctx := context.Background()
 	input := "test input"
-	response := goai.LLMResponse{
-		Text: "test response",
+	response := types.ChatResponse{
+		ChatUUID:    uuid.UUID{},
+		Answer:      "test response",
+		InputToken:  0,
+		OutputToken: 0,
 	}
 
 	mockChatService.EXPECT().
@@ -152,7 +156,7 @@ func TestProcessMessage_Error(t *testing.T) {
 
 	mockChatService.EXPECT().
 		Chat(ctx, sessionUUID, input).
-		Return(goai.LLMResponse{}, expectedErr)
+		Return(types.ChatResponse{}, expectedErr)
 
 	err := session.processMessage(ctx, input)
 
@@ -439,7 +443,7 @@ func TestStart_NoStreaming(t *testing.T) {
 
 	mockChatService.EXPECT().
 		Chat(ctx, sessionUUID, "Hello").
-		Return(goai.LLMResponse{Text: "Response text"}, nil)
+		Return(types.ChatResponse{Answer: "Response text"}, nil)
 
 	err := session.Start(ctx)
 
