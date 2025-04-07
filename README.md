@@ -1,5 +1,8 @@
+![echoy (1)](https://github.com/user-attachments/assets/be098a81-2d01-46e8-a75c-1dceafb0aa81)
+
 # Echoy
 Echoy - intelligent &amp; smart AI assistance for your daily life.
+
 
 ## Installation
 
