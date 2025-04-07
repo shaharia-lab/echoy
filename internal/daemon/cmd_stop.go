@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"time"
@@ -40,7 +41,7 @@ func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logge
 				errMsg := fmt.Sprintf("Failed to connect to daemon: %v", err)
 				logger.Error(errMsg)
 				themeManager.GetCurrentTheme().Error().Println(errMsg)
-				return fmt.Errorf(errMsg)
+				return errors.New(errMsg)
 			}
 			defer conn.Close()
 
@@ -50,7 +51,7 @@ func NewStopCmd(config config.Config, appConfig *config.AppConfig, logger *logge
 				errMsg := fmt.Sprintf("Failed to send stop command: %v", err)
 				logger.Error(errMsg)
 				themeManager.GetCurrentTheme().Error().Println(errMsg)
-				return fmt.Errorf(errMsg)
+				return errors.New(errMsg)
 			}
 
 			// Optional: Wait for confirmation or timeout

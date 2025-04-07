@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/shaharia-lab/echoy/internal/chat/types"
 	"github.com/shaharia-lab/goai"
 	"log"
 	"net/http"
@@ -23,7 +24,7 @@ func NewChatHandler(chatService Service) *ChatHandler {
 // HandleChatRequest handles incoming chat requests
 func (h *ChatHandler) HandleChatRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req ChatRequest
+		var req types.ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, fmt.Sprintf("failed to decode request: %v", err), http.StatusBadRequest)
 			return
@@ -53,7 +54,7 @@ func (h *ChatHandler) HandleChatRequest() http.HandlerFunc {
 // HandleChatStreamRequest handles streaming chat requests
 func (h *ChatHandler) HandleChatStreamRequest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req ChatRequest
+		var req types.ChatRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, fmt.Sprintf("failed to decode request: %v", err), http.StatusBadRequest)
 			return

@@ -8,6 +8,8 @@ import (
 	goai "github.com/shaharia-lab/goai"
 	mock "github.com/stretchr/testify/mock"
 
+	types "github.com/shaharia-lab/echoy/internal/chat/types"
+
 	uuid "github.com/google/uuid"
 )
 
@@ -25,22 +27,22 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // Chat provides a mock function with given fields: ctx, sessionID, message
-func (_m *MockService) Chat(ctx context.Context, sessionID uuid.UUID, message string) (goai.LLMResponse, error) {
+func (_m *MockService) Chat(ctx context.Context, sessionID uuid.UUID, message string) (types.ChatResponse, error) {
 	ret := _m.Called(ctx, sessionID, message)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Chat")
 	}
 
-	var r0 goai.LLMResponse
+	var r0 types.ChatResponse
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (goai.LLMResponse, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) (types.ChatResponse, error)); ok {
 		return rf(ctx, sessionID, message)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) goai.LLMResponse); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID, string) types.ChatResponse); ok {
 		r0 = rf(ctx, sessionID, message)
 	} else {
-		r0 = ret.Get(0).(goai.LLMResponse)
+		r0 = ret.Get(0).(types.ChatResponse)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID, string) error); ok {
@@ -72,12 +74,12 @@ func (_c *MockService_Chat_Call) Run(run func(ctx context.Context, sessionID uui
 	return _c
 }
 
-func (_c *MockService_Chat_Call) Return(_a0 goai.LLMResponse, _a1 error) *MockService_Chat_Call {
+func (_c *MockService_Chat_Call) Return(_a0 types.ChatResponse, _a1 error) *MockService_Chat_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_Chat_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (goai.LLMResponse, error)) *MockService_Chat_Call {
+func (_c *MockService_Chat_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (types.ChatResponse, error)) *MockService_Chat_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -138,6 +140,121 @@ func (_c *MockService_ChatStreaming_Call) Return(_a0 <-chan goai.StreamingLLMRes
 }
 
 func (_c *MockService_ChatStreaming_Call) RunAndReturn(run func(context.Context, uuid.UUID, string) (<-chan goai.StreamingLLMResponse, error)) *MockService_ChatStreaming_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetChatHistory provides a mock function with given fields: ctx, chatUUID
+func (_m *MockService) GetChatHistory(ctx context.Context, chatUUID uuid.UUID) (*goai.ChatHistory, error) {
+	ret := _m.Called(ctx, chatUUID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChatHistory")
+	}
+
+	var r0 *goai.ChatHistory
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) (*goai.ChatHistory, error)); ok {
+		return rf(ctx, chatUUID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, uuid.UUID) *goai.ChatHistory); ok {
+		r0 = rf(ctx, chatUUID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*goai.ChatHistory)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+		r1 = rf(ctx, chatUUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetChatHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChatHistory'
+type MockService_GetChatHistory_Call struct {
+	*mock.Call
+}
+
+// GetChatHistory is a helper method to define mock.On call
+//   - ctx context.Context
+//   - chatUUID uuid.UUID
+func (_e *MockService_Expecter) GetChatHistory(ctx interface{}, chatUUID interface{}) *MockService_GetChatHistory_Call {
+	return &MockService_GetChatHistory_Call{Call: _e.mock.On("GetChatHistory", ctx, chatUUID)}
+}
+
+func (_c *MockService_GetChatHistory_Call) Run(run func(ctx context.Context, chatUUID uuid.UUID)) *MockService_GetChatHistory_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(uuid.UUID))
+	})
+	return _c
+}
+
+func (_c *MockService_GetChatHistory_Call) Return(_a0 *goai.ChatHistory, _a1 error) *MockService_GetChatHistory_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetChatHistory_Call) RunAndReturn(run func(context.Context, uuid.UUID) (*goai.ChatHistory, error)) *MockService_GetChatHistory_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetListChatHistories provides a mock function with given fields: ctx
+func (_m *MockService) GetListChatHistories(ctx context.Context) (types.ChatHistoryList, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetListChatHistories")
+	}
+
+	var r0 types.ChatHistoryList
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (types.ChatHistoryList, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) types.ChatHistoryList); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(types.ChatHistoryList)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetListChatHistories_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetListChatHistories'
+type MockService_GetListChatHistories_Call struct {
+	*mock.Call
+}
+
+// GetListChatHistories is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) GetListChatHistories(ctx interface{}) *MockService_GetListChatHistories_Call {
+	return &MockService_GetListChatHistories_Call{Call: _e.mock.On("GetListChatHistories", ctx)}
+}
+
+func (_c *MockService_GetListChatHistories_Call) Run(run func(ctx context.Context)) *MockService_GetListChatHistories_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_GetListChatHistories_Call) Return(_a0 types.ChatHistoryList, _a1 error) *MockService_GetListChatHistories_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetListChatHistories_Call) RunAndReturn(run func(context.Context) (types.ChatHistoryList, error)) *MockService_GetListChatHistories_Call {
 	_c.Call.Return(run)
 	return _c
 }
