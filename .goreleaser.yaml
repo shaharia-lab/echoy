@@ -26,3 +26,22 @@ dockers:
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.licenses=MIT
+nfpms:
+  - id: echoy
+    package_name: echoy
+    vendor: shaharia-lab
+    homepage: https://github.com/shaharia-lab/echoy
+    maintainer: Shaharia Lab <hello@shaharialab.com>
+    description: Echoy - intelligent & smart AI assistance for your daily life
+    license: MIT
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
+    bindir: /usr/bin
+    contents:
+      - src: LICENSE
+        dst: /usr/share/doc/echoy/copyright
+    recommends:
+      - git
