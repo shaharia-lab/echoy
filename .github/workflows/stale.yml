@@ -1,0 +1,43 @@
+name: Mark Stale Issues and PRs
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Mark Stale Issues and Pull Requests
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: 15
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+
+          stale-issue-message: |
+            This issue is being marked as stale because it has been inactive for 15 days.
+
+            To keep it open, please add a comment or remove the 'Stale' label. Otherwise, it may be closed in the future.
+
+            If you need help or want to discuss this, feel free to join our [#echoy Channel on Discord](https://discordapp.com/channels/1346487271225954384/1358845326580252713).
+
+            Thank you for your contributions!
+
+          stale-pr-message: |
+            This Pull Request is being marked as stale because it has been inactive for 15 days.
+
+            To keep it active, please comment, push new commits, or remove the 'Stale' label. Otherwise, it may be closed in the future.
+
+            If you need help or want to discuss this, feel free to join our [#echoy Channel on Discord](https://discordapp.com/channels/1346487271225954384/1358845326580252713).
+
+            Thanks for your contribution!
+
+          days-before-close: -1
+          remove-stale-when-updated: true
