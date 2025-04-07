@@ -7,6 +7,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
 	"github.com/shaharia-lab/echoy/internal/webserver"
+	"github.com/shaharia-lab/echoy/internal/webui"
 	"github.com/shaharia-lab/goai"
 	"github.com/shaharia-lab/goai/mcp"
 	"net"
@@ -105,6 +106,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 				chatHandler,
+				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory),
 			)
 			daemon.WithWebServer(ws)
 

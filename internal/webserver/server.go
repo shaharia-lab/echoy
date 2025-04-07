@@ -4,11 +4,14 @@ package webserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
+	"github.com/shaharia-lab/echoy/internal/webui"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -30,6 +33,7 @@ type WebServer struct {
 	toolsProvider      *tools.Provider
 	llmHandler         *llm.LLMHandler
 	chatHandler        *chat.ChatHandler
+	frontendDownloader webui.FrontendDownloader
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
@@ -39,6 +43,7 @@ func NewWebServer(
 	toolsProvider *tools.Provider,
 	llmHandler *llm.LLMHandler,
 	chatHandler *chat.ChatHandler,
+	frontendDownloader webui.FrontendDownloader,
 ) *WebServer {
 	r := chi.NewRouter()
 	r.Use(cors.Handler(cors.Options{
@@ -59,6 +64,7 @@ func NewWebServer(
 		toolsProvider:      toolsProvider,
 		llmHandler:         llmHandler,
 		chatHandler:        chatHandler,
+		frontendDownloader: frontendDownloader,
 	}
 }
 
@@ -104,6 +110,11 @@ func (ws *WebServer) setupRoutes() {
 
 // Start initializes and starts the HTTP server
 func (ws *WebServer) Start() error {
+	err := ws.prepareWebUIFrontendDirectory()
+	if err != nil {
+		return err
+	}
+
 	if ws.server != nil {
 		return errors.New("server already running")
 	}
@@ -121,6 +132,30 @@ func (ws *WebServer) Start() error {
 		}
 	}()
 
+	return nil
+}
+
+func (ws *WebServer) prepareWebUIFrontendDirectory() error {
+	distDirPath := filepath.Join(ws.webStaticDirectory, frontendBuildDirectoryName)
+
+	if info, err := os.Stat(distDirPath); err == nil && info.IsDir() {
+		log.Printf("Frontend files directory already exists at %s", distDirPath)
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check frontend directory: %w", err)
+	}
+
+	if err := os.MkdirAll(ws.webStaticDirectory, 0755); err != nil {
+		return fmt.Errorf("failed to create web static directory: %w", err)
+	}
+
+	log.Printf("Downloading frontend files...")
+	if err := ws.frontendDownloader.DownloadFrontend(); err != nil {
+		log.Printf("Failed to download frontend files: %v", err)
+		return fmt.Errorf("failed to download frontend files: %w", err)
+	}
+
+	log.Printf("Frontend files downloaded successfully to %s", distDirPath)
 	return nil
 }
 

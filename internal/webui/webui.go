@@ -22,6 +22,10 @@ const (
 	DownloadTimeout       = 60 * time.Second
 )
 
+type FrontendDownloader interface {
+	DownloadFrontend() error
+}
+
 type Release struct {
 	TagName string  `json:"tag_name"`
 	Assets  []Asset `json:"assets"`
@@ -34,19 +38,19 @@ type Asset struct {
 	Size               int    `json:"size"`
 }
 
-type FrontendReleaseDownloader struct {
+type FrontendGitHubReleaseDownloader struct {
 	Version              string
 	DestinationDirectory string
 }
 
-func NewFrontendReleaseDownloader(version string, destinationDirectory string) *FrontendReleaseDownloader {
-	return &FrontendReleaseDownloader{
+func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string) *FrontendGitHubReleaseDownloader {
+	return &FrontendGitHubReleaseDownloader{
 		Version:              version,
 		DestinationDirectory: destinationDirectory,
 	}
 }
 
-func (d *FrontendReleaseDownloader) getLatestReleaseURL() (string, error) {
+func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest",
 		GitHubAPIBaseURL,
 		GitHubRepositoryOwner,
@@ -88,7 +92,7 @@ func (d *FrontendReleaseDownloader) getLatestReleaseURL() (string, error) {
 	return "", errors.New("dist.zip asset not found in the latest release")
 }
 
-func (d *FrontendReleaseDownloader) getSpecificReleaseURL() (string, error) {
+func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s",
 		GitHubAPIBaseURL,
 		GitHubRepositoryOwner,
@@ -131,7 +135,7 @@ func (d *FrontendReleaseDownloader) getSpecificReleaseURL() (string, error) {
 	return "", fmt.Errorf("dist.zip asset not found in release %s", d.Version)
 }
 
-func (d *FrontendReleaseDownloader) getDownloadURL() (string, error) {
+func (d *FrontendGitHubReleaseDownloader) getDownloadURL() (string, error) {
 	version := "latest"
 	if d.Version != "" {
 		version = d.Version
@@ -161,7 +165,7 @@ func (d *FrontendReleaseDownloader) getDownloadURL() (string, error) {
 	return url, nil
 }
 
-func (d *FrontendReleaseDownloader) downloadAsset(url string) (string, error) {
+func (d *FrontendGitHubReleaseDownloader) downloadAsset(url string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), DownloadTimeout)
 	defer cancel()
 
@@ -204,7 +208,7 @@ func (d *FrontendReleaseDownloader) downloadAsset(url string) (string, error) {
 	return tempFile.Name(), nil
 }
 
-func (d *FrontendReleaseDownloader) cleanDestinationDirectory() error {
+func (d *FrontendGitHubReleaseDownloader) cleanDestinationDirectory() error {
 	if _, err := os.Stat(d.DestinationDirectory); os.IsNotExist(err) {
 		return nil
 	}
@@ -225,7 +229,7 @@ func (d *FrontendReleaseDownloader) cleanDestinationDirectory() error {
 	return nil
 }
 
-func (d *FrontendReleaseDownloader) extractZip(zipPath string) error {
+func (d *FrontendGitHubReleaseDownloader) extractZip(zipPath string) error {
 	reader, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return fmt.Errorf("failed to open zip file: %w", err)
@@ -282,7 +286,7 @@ func (d *FrontendReleaseDownloader) extractZip(zipPath string) error {
 	return nil
 }
 
-func (d *FrontendReleaseDownloader) DownloadFrontend() error {
+func (d *FrontendGitHubReleaseDownloader) DownloadFrontend() error {
 	downloadURL, err := d.getDownloadURL()
 	if err != nil {
 		return fmt.Errorf("failed to get download URL: %w", err)
