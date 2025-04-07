@@ -25,7 +25,10 @@ jobs:
           go-version: '1.24'
 
       - name: Run Backend Tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+        run: make test-unit
+
+      - name: Generate coverage report
+        run: go tool cover -html=coverage.out -o coverage.html
 
       - name: Publish artifacts
         uses: actions/upload-artifact@v4
@@ -54,7 +57,14 @@ jobs:
           cache-dependency-path: |
             go.sum
 
-      - name: Lint Code Base
+      - name: Install tools
+        run: make tools
+
+      - name: Lint Go code
+        run: make lint
+        continue-on-error: true
+
+      - name: Lint Code Base (Super-Linter)
         uses: github/super-linter/slim@v4
         continue-on-error: true
         env:
@@ -123,6 +133,9 @@ jobs:
         with:
           go-version: '^1.24'
 
+      - name: Install GoReleaser
+        run: make tools
+
       - uses: docker/login-action@v1
         with:
           registry: ghcr.io
@@ -135,9 +148,7 @@ jobs:
           git config user.email "actions@github.com"
           git tag -a v${{ github.run_number }}.0.0 -m "Test tag for GoReleaser"
 
-      - uses: goreleaser/goreleaser-action@v6
-        with:
-          version: '~> v2'
-          args: release --skip=publish --clean --fail-fast --verbose
+      - name: Test GoReleaser
+        run: make gorelease-test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

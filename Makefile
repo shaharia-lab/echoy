@@ -77,13 +77,13 @@ deps:
 tools:
 	@echo "Installing development tools..."
 	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	$(GO) install github.com/goreleaser/goreleaser@latest
+	$(GO) install github.com/goreleaser/goreleaser/v2@latest
 
 # Test goreleaser configuration
 gorelease-test:
 	@echo "Testing goreleaser configuration..."
 	$(GORELEASE) check
-	$(GORELEASE) release --snapshot --skip-publish --rm-dist
+	$(GORELEASE) release --skip=publish --clean --fail-fast --verbose
 
 # All-in-one target for CI
 ci: deps lint test-unit vet gorelease-test
