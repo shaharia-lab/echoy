@@ -83,7 +83,7 @@ tools:
 gorelease-test:
 	@echo "Testing goreleaser configuration..."
 	$(GORELEASE) check
-	$(GORELEASE) release --skip=publish --clean --fail-fast --verbose
+	$(GORELEASE) release --snapshot --fail-fast --clean --verbose
 
 # All-in-one target for CI
 ci: deps lint test-unit vet gorelease-test
