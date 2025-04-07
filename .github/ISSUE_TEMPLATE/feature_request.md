@@ -2,7 +2,7 @@
 name: ✨ Feature Request
 about: Suggest an idea or enhancement for echoy
 title: "[FEAT] Brief description of the feature"
-labels: 'enhancement' # Automatically add the 'enhancement' label
+labels: 'feature-request'
 assignees: ''
 
 ---
