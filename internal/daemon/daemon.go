@@ -28,7 +28,7 @@ type Config struct {
 	WriteTimeout       time.Duration
 	CommandExecTimeout time.Duration
 	Logger             *slog.Logger
-	MaxConnections     int // Max concurrent client connections (0 for unlimited)
+	MaxConnections     int
 }
 
 // Daemon represents the main daemon structure
@@ -45,7 +45,7 @@ type Daemon struct {
 	logger      *slog.Logger
 }
 
-const defaultReaderSize = 4096 // Max command line length
+const defaultReaderSize = 4096
 
 // NewDaemon creates a new Daemon instance with the provided configuration
 func NewDaemon(cfg Config) *Daemon {
