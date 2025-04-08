@@ -111,7 +111,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				chatHandler,
 				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, l),
 			)
-			daemon.WithWebServer(ws)
+			daemon.RegisterProcess(ws)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
