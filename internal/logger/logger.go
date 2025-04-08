@@ -71,6 +71,14 @@ func BuildZapLogger(config Config) (*zap.Logger, error) {
 		}
 	}
 
+	if config.MaxSizeMB <= 0 {
+		config.MaxSizeMB = DefaultMaxSizeMB
+	}
+
+	if config.LogLevel == "" {
+		config.LogLevel = InfoLevel
+	}
+
 	// Parse log level
 	level := zapcore.InfoLevel
 	switch config.LogLevel {
