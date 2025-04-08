@@ -11,6 +11,7 @@ import (
 	"github.com/shaharia-lab/goai"
 	"github.com/shaharia-lab/goai/mcp"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -96,6 +97,11 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 
 			chatService := chat.NewChatService(llmService, historyService)
 			chatHandler := chat.NewChatHandler(chatService)
+			webUIDownloaderHttpClient := &http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return nil
+				},
+			}
 
 			ws := webserver.NewWebServer(
 				"10222",
@@ -103,7 +109,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 				chatHandler,
-				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory),
+				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory, webUIDownloaderHttpClient),
 			)
 			daemon.WithWebServer(ws)
 

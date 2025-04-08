@@ -1,3 +1,4 @@
+// Package webui provides functionality to download and extract the frontend assets from a GitHub release.
 package webui
 
 import (
@@ -15,49 +16,73 @@ import (
 )
 
 const (
-	GitHubRepositoryOwner = "shaharia-lab"
-	GitHubRepositoryName  = "echoy-webui"
-	GitHubAPIBaseURL      = "https://api.github.com"
-	AssetFileName         = "dist.zip"
-	DownloadTimeout       = 60 * time.Second
+	webUIRepoOwner   = "shaharia-lab"
+	webUIRepoName    = "echoy-webui"
+	githubAPIBaseURL = "https://api.github.com"
+	assetFileName    = "dist.zip"
+	downloadTimeout  = 60 * time.Second
 )
 
+// FrontendDownloader is an interface for downloading the frontend assets.
 type FrontendDownloader interface {
 	DownloadFrontend() error
 }
 
-type Release struct {
+type release struct {
 	TagName string  `json:"tag_name"`
-	Assets  []Asset `json:"assets"`
+	Assets  []asset `json:"assets"`
 }
 
-type Asset struct {
+type asset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 	ContentType        string `json:"content_type"`
 	Size               int    `json:"size"`
 }
 
+// FrontendGitHubReleaseDownloader is a struct that implements the FrontendDownloader interface.
 type FrontendGitHubReleaseDownloader struct {
 	Version              string
 	DestinationDirectory string
+	httpClient           *http.Client
 }
 
-func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string) *FrontendGitHubReleaseDownloader {
+// NewFrontendGitHubReleaseDownloader creates a new instance of FrontendGitHubReleaseDownloader.
+func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string, httpClient *http.Client) *FrontendGitHubReleaseDownloader {
 	return &FrontendGitHubReleaseDownloader{
 		Version:              version,
 		DestinationDirectory: destinationDirectory,
+		httpClient:           httpClient,
 	}
+}
+
+func (d *FrontendGitHubReleaseDownloader) DownloadFrontend() error {
+	downloadURL, err := d.getDownloadURL()
+	if err != nil {
+		return fmt.Errorf("failed to get download URL: %w", err)
+	}
+
+	zipPath, err := d.downloadAsset(downloadURL)
+	if err != nil {
+		return fmt.Errorf("failed to download frontend asset: %w", err)
+	}
+	defer os.Remove(zipPath)
+
+	if err := d.extractZip(zipPath); err != nil {
+		return fmt.Errorf("failed to extract frontend: %w", err)
+	}
+
+	return nil
 }
 
 func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest",
-		GitHubAPIBaseURL,
-		GitHubRepositoryOwner,
-		GitHubRepositoryName,
+		githubAPIBaseURL,
+		webUIRepoOwner,
+		webUIRepoName,
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), DownloadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -67,8 +92,7 @@ func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) 
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := d.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to get latest release: %w", err)
 	}
@@ -78,13 +102,13 @@ func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) 
 		return "", fmt.Errorf("failed to get latest release, status code: %d", resp.StatusCode)
 	}
 
-	var release Release
+	var release release
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return "", fmt.Errorf("failed to decode release info: %w", err)
 	}
 
 	for _, asset := range release.Assets {
-		if asset.Name == AssetFileName {
+		if asset.Name == assetFileName {
 			return asset.BrowserDownloadURL, nil
 		}
 	}
@@ -94,13 +118,13 @@ func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) 
 
 func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s",
-		GitHubAPIBaseURL,
-		GitHubRepositoryOwner,
-		GitHubRepositoryName,
+		githubAPIBaseURL,
+		webUIRepoOwner,
+		webUIRepoName,
 		d.Version,
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), DownloadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -110,8 +134,7 @@ func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error
 
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := d.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to get release %s: %w", d.Version, err)
 	}
@@ -121,13 +144,13 @@ func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error
 		return "", fmt.Errorf("failed to get release %s, status code: %d", d.Version, resp.StatusCode)
 	}
 
-	var release Release
+	var release release
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return "", fmt.Errorf("failed to decode release info: %w", err)
 	}
 
 	for _, asset := range release.Assets {
-		if asset.Name == AssetFileName {
+		if asset.Name == assetFileName {
 			return asset.BrowserDownloadURL, nil
 		}
 	}
@@ -148,25 +171,25 @@ func (d *FrontendGitHubReleaseDownloader) getDownloadURL() (string, error) {
 	if version == "latest" {
 		// For the latest release, we'll try a different approach
 		url := fmt.Sprintf("https://github.com/%s/%s/releases/latest/download/%s",
-			GitHubRepositoryOwner,
-			GitHubRepositoryName,
-			AssetFileName,
+			webUIRepoOwner,
+			webUIRepoName,
+			assetFileName,
 		)
 		return url, nil
 	}
 
 	// For specific versions
 	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s",
-		GitHubRepositoryOwner,
-		GitHubRepositoryName,
+		webUIRepoOwner,
+		webUIRepoName,
 		d.Version,
-		AssetFileName,
+		assetFileName,
 	)
 	return url, nil
 }
 
 func (d *FrontendGitHubReleaseDownloader) downloadAsset(url string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), DownloadTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -174,14 +197,7 @@ func (d *FrontendGitHubReleaseDownloader) downloadAsset(url string) (string, err
 		return "", fmt.Errorf("failed to create download request: %w", err)
 	}
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// Allow redirects (GitHub will redirect for latest)
-			return nil
-		},
-	}
-
-	resp, err := client.Do(req)
+	resp, err := d.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to download asset: %w", err)
 	}
@@ -281,25 +297,6 @@ func (d *FrontendGitHubReleaseDownloader) extractZip(zipPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to extract file %s: %w", file.Name, err)
 		}
-	}
-
-	return nil
-}
-
-func (d *FrontendGitHubReleaseDownloader) DownloadFrontend() error {
-	downloadURL, err := d.getDownloadURL()
-	if err != nil {
-		return fmt.Errorf("failed to get download URL: %w", err)
-	}
-
-	zipPath, err := d.downloadAsset(downloadURL)
-	if err != nil {
-		return fmt.Errorf("failed to download frontend asset: %w", err)
-	}
-	defer os.Remove(zipPath)
-
-	if err := d.extractZip(zipPath); err != nil {
-		return fmt.Errorf("failed to extract frontend: %w", err)
 	}
 
 	return nil
