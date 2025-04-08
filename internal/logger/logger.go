@@ -54,35 +54,29 @@ type Logger struct {
 }
 
 // NewLogger creates a new logger with the given configuration
-func NewLogger(config Config) (*Logger, error) {
-	// Set default values if not provided
-	if config.LogLevel == "" {
-		config.LogLevel = InfoLevel
-	}
-	if config.MaxSizeMB == 0 {
-		config.MaxSizeMB = DefaultMaxSizeMB
-	}
-
-	// Set up the logger
-	logger, err := buildZapLogger(config)
-	if err != nil {
-		return nil, err
-	}
-
+func NewLogger(config Config, zapLogger *zap.Logger) (*Logger, error) {
 	return &Logger{
-		zap: logger,
+		zap: zapLogger,
 		cfg: config,
 	}, nil
 }
 
-// buildZapLogger sets up the zap logger with the provided configuration
-func buildZapLogger(config Config) (*zap.Logger, error) {
+// BuildZapLogger sets up the zap logger with the provided configuration
+func BuildZapLogger(config Config) (*zap.Logger, error) {
 	// Create directory for log file if it doesn't exist
 	if config.FilePath != "" {
 		dir := filepath.Dir(config.FilePath)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, err
 		}
+	}
+
+	if config.MaxSizeMB <= 0 {
+		config.MaxSizeMB = DefaultMaxSizeMB
+	}
+
+	if config.LogLevel == "" {
+		config.LogLevel = InfoLevel
 	}
 
 	// Parse log level
@@ -125,7 +119,7 @@ func buildZapLogger(config Config) (*zap.Logger, error) {
 		fileWriter := zapcore.AddSync(&lumberjack.Logger{
 			Filename:   config.FilePath,
 			MaxSize:    config.MaxSizeMB,
-			MaxBackups: 0, // Keep all backups within MaxAge
+			MaxBackups: 0,
 			MaxAge:     MaxLogRetentionDays,
 			Compress:   true,
 		})
