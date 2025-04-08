@@ -3,3 +3,28 @@ dist/
 /coverage.out
 /coverage.html
 /echoy
+
+# Go related
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.log
+vendor/
+
+# Shell related
+*.sh~
+
+# Makefile related
+*.d
+*.dSYM
+*.o
+*.a
+*.lo
+*.la
+
+# Docker related
+docker-compose.override.yml
