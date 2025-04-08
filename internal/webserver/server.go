@@ -68,11 +68,6 @@ func NewWebServer(
 	}
 }
 
-// Router returns the chi router to allow adding routes from outside
-func (ws *WebServer) Router() *chi.Mux {
-	return ws.router
-}
-
 // setupRoutes configures the default routes
 func (ws *WebServer) setupRoutes() {
 	ws.router.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
