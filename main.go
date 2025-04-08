@@ -44,7 +44,7 @@ func main() {
 		initializer.NewCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.Initializer),
 		chat.NewChatCmd(cliContainer),
 		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
-		daemon.NewStartCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
+		daemon.NewStartCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		daemon.NewStatusCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 	)
