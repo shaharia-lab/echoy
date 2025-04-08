@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -327,5 +328,51 @@ func TestHandleConnection_ReadTimeout(t *testing.T) {
 		t.Errorf("Expected error reading from clientConn after server timeout, but got %d bytes", n)
 	} else if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "closed") {
 		t.Errorf("Expected EOF or closed error reading from clientConn, got: %v", err)
+	}
+}
+
+func TestHandleConnection_WriteTimeout(t *testing.T) {
+	t.Parallel()
+
+	writeTimeout := 50 * time.Millisecond
+	readTimeout := writeTimeout * 2
+
+	var logBuf bytes.Buffer
+	testLogger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	d, _ := createTestDaemon(t, Config{
+		WriteTimeout: writeTimeout,
+		ReadTimeout:  readTimeout,
+		Logger:       testLogger,
+	})
+
+	echoResponse := "This is the response to echo\n"
+	d.RegisterCommand("ECHO", func(ctx context.Context, args []string) (string, error) {
+		return echoResponse, nil
+	})
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	_, err := clientConn.Write([]byte("ECHO\n"))
+	if err != nil {
+		t.Fatalf("Client write command failed: %v", err)
+	}
+
+	waitForWg(t, &wg, writeTimeout*3)
+
+	clientConn.Close()
+
+	logOutput := logBuf.String()
+	expectedLogMsg := "Timeout writing response to client"
+	if !strings.Contains(logOutput, expectedLogMsg) {
+		t.Errorf("Expected log message %q not found in logs:\n%s", expectedLogMsg, logOutput)
 	}
 }
