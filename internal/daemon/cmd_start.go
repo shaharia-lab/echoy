@@ -21,7 +21,6 @@ import (
 )
 
 // NewStartCmd creates a command to run the daemon
-// Simplified parameters: Removed duplicate logger 'l' and unused 'webUIStaticDirectory'
 func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	var foreground bool
 
@@ -87,7 +86,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 
 			log.Info("Starting daemon in foreground mode...")
 
-			// Create Daemon Configuration using the refactored package
 			daemonCfg := Config{
 				SocketPath:         socketPath,
 				Logger:             nil,
@@ -97,10 +95,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 				CommandExecTimeout: 5 * time.Second,
 			}
 			daemonInstance := NewDaemon(daemonCfg)
-
-			// ** IMPORTANT: Register command handlers here or elsewhere **
-			// Example: daemonInstance.RegisterCommand("YOUR_COMMAND", yourCommandHandler)
-			// You'll need to implement handlers for tasks like starting webservers, etc.
 
 			// Setup graceful shutdown using context triggered by signals
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
