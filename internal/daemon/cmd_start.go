@@ -33,7 +33,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 				telemetryEvent.SendTelemetryEvent(
 					context.Background(),
 					appConfig,
-					"daemon.start.attempt", // More specific event name
+					"daemon.start.attempt",
 					telemetry.SeverityInfo, "Attempting to start daemon",
 					nil,
 				)
@@ -67,7 +67,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 					return fmt.Errorf("failed to start daemon process: %w", err)
 				}
 
-				// Send telemetry after successful background start attempt
 				if appConf.UsageTracking.Enabled {
 					telemetryEvent.SendTelemetryEvent(
 						context.Background(),
@@ -96,11 +95,9 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 			}
 			daemonInstance := NewDaemon(daemonCfg)
 
-			// Setup graceful shutdown using context triggered by signals
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-			defer stop() // Important: releases resources associated with NotifyContext
+			defer stop()
 
-			// Start the daemon in a separate goroutine so we can wait for the context
 			var startErr error
 			daemonStopped := make(chan struct{})
 			go func() {
@@ -112,8 +109,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 				}
 			}()
 
-			// Check immediately if Start failed (e.g., socket in use)
-			// Give Start a very brief moment to potentially fail fast
 			select {
 			case <-time.After(100 * time.Millisecond):
 				log.WithField("socket", daemonCfg.SocketPath).Info("Daemon successfully started and listening")
@@ -127,32 +122,27 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 						nil,
 					)
 				}
-			case <-ctx.Done(): // If stop() was called due to immediate Start error
+			case <-ctx.Done():
 				if startErr != nil {
 					themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon: %v", startErr))
 					return startErr
 				}
-				// Should not happen unless signal received instantly
+
 				log.Info("Daemon startup interrupted by signal")
 				return errors.New("daemon startup interrupted")
 			}
 
-			// Wait for shutdown signal
 			<-ctx.Done()
 
-			// Stop was called by the signal handler (or Start error), context is cancelled
 			log.Info("Shutdown signal received, stopping daemon...")
 			themeManager.GetCurrentTheme().Info().Println("Shutting down daemon...")
 
-			// Initiate graceful shutdown
-			daemonInstance.Stop() // This now handles timeouts internally
+			daemonInstance.Stop()
 
-			// Wait for the daemon Start goroutine to fully exit (after Stop completes)
 			<-daemonStopped
 			log.Info("Daemon stopped gracefully.")
 			themeManager.GetCurrentTheme().Success().Println("Daemon stopped.")
 
-			// Return the start error if it occurred
 			if startErr != nil {
 				return fmt.Errorf("daemon exited with error: %w", startErr)
 			}
@@ -166,8 +156,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger
 	return cmd
 }
 
-// isDaemonRunning checks if the daemon is running by pinging its socket.
-// Pass the logger for logging connection attempts/errors.
 func isDaemonRunning(socketPath string, logger *logger.Logger) (bool, error) {
 	logger.WithField("socket", socketPath).Debug("Checking if daemon is running")
 	conn, err := net.DialTimeout("unix", socketPath, 1*time.Second) // Shorter timeout for check
@@ -187,7 +175,6 @@ func isDaemonRunning(socketPath string, logger *logger.Logger) (bool, error) {
 		return false, err
 	}
 
-	// Read response
 	if err = conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
 		logger.WithField("error", err).Debug("Failed to set read deadline for pong")
 		return false, err

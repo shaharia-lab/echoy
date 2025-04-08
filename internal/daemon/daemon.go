@@ -10,14 +10,17 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
+// CommandFunc defines the function signature for command handlers
 type CommandFunc func(ctx context.Context, args []string) (response string, err error)
 
+// Config holds the configuration for the daemon
 type Config struct {
 	SocketPath         string
 	ShutdownTimeout    time.Duration
@@ -27,6 +30,7 @@ type Config struct {
 	Logger             *slog.Logger
 }
 
+// Daemon represents the main daemon structure
 type Daemon struct {
 	config      Config
 	listener    net.Listener
@@ -40,6 +44,7 @@ type Daemon struct {
 	logger      *slog.Logger
 }
 
+// NewDaemon creates a new Daemon instance with the provided configuration
 func NewDaemon(cfg Config) *Daemon {
 	if cfg.Logger == nil {
 		cfg.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -54,7 +59,7 @@ func NewDaemon(cfg Config) *Daemon {
 		cfg.WriteTimeout = 10 * time.Second
 	}
 	if cfg.CommandExecTimeout == 0 {
-		cfg.CommandExecTimeout = 5 * time.Second // Default command execution timeout
+		cfg.CommandExecTimeout = 5 * time.Second
 	}
 
 	d := &Daemon{
@@ -422,10 +427,8 @@ func (d *Daemon) handleSignals(sigChan chan os.Signal) {
 	d.logger.Info("Received OS signal", "signal", sig)
 	signal.Stop(sigChan)
 	close(sigChan)
-	go d.Stop() // Trigger stop asynchronously to allow signal handler to return quickly
+	go d.Stop()
 }
-
-// --- Default Command Handlers ---
 
 func (d *Daemon) handlePing(ctx context.Context, args []string) (string, error) {
 	return "PONG", nil
@@ -444,8 +447,7 @@ func (d *Daemon) handleStatus(ctx context.Context, args []string) (string, error
 	}
 	d.cmdMu.RUnlock()
 
-	// Sort command names for consistent output? Optional.
-	// sort.Strings(cmdNames)
+	sort.Strings(cmdNames)
 
 	status := fmt.Sprintf(
 		"Connections: %d active\nCommands: %d registered (%s)",
@@ -453,7 +455,7 @@ func (d *Daemon) handleStatus(ctx context.Context, args []string) (string, error
 		cmdCount,
 		strings.Join(cmdNames, ", "),
 	)
-	// Add more status info like uptime, memory usage if needed
+
 	return status, nil
 }
 
