@@ -1,10 +1,12 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -14,72 +16,113 @@ import (
 	"time"
 )
 
+type CommandFunc func(ctx context.Context, args []string) (response string, err error)
+
+type Config struct {
+	SocketPath         string
+	ShutdownTimeout    time.Duration
+	ReadTimeout        time.Duration
+	WriteTimeout       time.Duration
+	CommandExecTimeout time.Duration // Added timeout for individual command execution
+	Logger             *slog.Logger
+}
+
 type Daemon struct {
-	SocketPath  string
+	config      Config
 	listener    net.Listener
+	stopOnce    sync.Once
 	stopChan    chan struct{}
+	wg          sync.WaitGroup
 	connections map[net.Conn]struct{}
 	connMu      sync.RWMutex
-	wg          sync.WaitGroup
-	processes   []ManagedProcess
-	startMu     sync.Mutex
+	commands    map[string]CommandFunc
+	cmdMu       sync.RWMutex
+	logger      *slog.Logger
 }
 
-func NewDaemon(socketPath string) *Daemon {
-	return &Daemon{
-		SocketPath:  socketPath,
+func NewDaemon(cfg Config) *Daemon {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	}
+	if cfg.ShutdownTimeout == 0 {
+		cfg.ShutdownTimeout = 30 * time.Second
+	}
+	if cfg.ReadTimeout == 0 {
+		cfg.ReadTimeout = 10 * time.Second
+	}
+	if cfg.WriteTimeout == 0 {
+		cfg.WriteTimeout = 10 * time.Second
+	}
+	if cfg.CommandExecTimeout == 0 {
+		cfg.CommandExecTimeout = 5 * time.Second // Default command execution timeout
+	}
+
+	d := &Daemon{
+		config:      cfg,
 		stopChan:    make(chan struct{}),
 		connections: make(map[net.Conn]struct{}),
-		processes:   make([]ManagedProcess, 0),
+		commands:    make(map[string]CommandFunc),
+		logger:      cfg.Logger,
 	}
-}
 
-func (d *Daemon) RegisterProcess(p ManagedProcess) *Daemon {
-	d.processes = append(d.processes, p)
+	d.registerDefaultCommands()
 	return d
 }
 
-func (d *Daemon) Start() error {
-	d.startMu.Lock()
-	defer d.startMu.Unlock()
+func (d *Daemon) registerDefaultCommands() {
+	d.RegisterCommand("PING", d.handlePing)
+	d.RegisterCommand("STATUS", d.handleStatus)
+	d.RegisterCommand("STOP", d.handleStop)
+}
 
-	if err := os.RemoveAll(d.SocketPath); err != nil {
-		return fmt.Errorf("failed to remove existing socket: %w", err)
+func (d *Daemon) RegisterCommand(name string, handler CommandFunc) {
+	d.cmdMu.Lock()
+	defer d.cmdMu.Unlock()
+	upperName := strings.ToUpper(name)
+	if _, exists := d.commands[upperName]; exists {
+		d.logger.Warn("Overwriting existing command handler", "command", upperName)
+	}
+	d.commands[upperName] = handler
+	d.logger.Debug("Registered command", "command", upperName)
+}
+
+func (d *Daemon) Start() error {
+	select {
+	case <-d.stopChan:
+		return errors.New("daemon is stopped or stopping")
+	default:
+	}
+
+	if err := os.RemoveAll(d.config.SocketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		d.logger.Error("Failed to remove existing socket file", "path", d.config.SocketPath, "error", err)
+		return fmt.Errorf("failed to remove existing socket %s: %w", d.config.SocketPath, err)
 	}
 
 	var err error
-	d.listener, err = net.Listen("unix", d.SocketPath)
+	d.listener, err = net.Listen("unix", d.config.SocketPath)
 	if err != nil {
-		return fmt.Errorf("failed to listen on socket: %w", err)
+		d.logger.Error("Failed to listen on socket", "path", d.config.SocketPath, "error", err)
+		return fmt.Errorf("failed to listen on socket %s: %w", d.config.SocketPath, err)
 	}
+
+	cleanupListener := true
 	defer func() {
-		if err != nil && d.listener != nil {
+		if cleanupListener && d.listener != nil {
 			d.listener.Close()
-			os.RemoveAll(d.SocketPath)
+			os.RemoveAll(d.config.SocketPath)
 		}
 	}()
 
-	if err = os.Chmod(d.SocketPath, 0660); err != nil {
-		return fmt.Errorf("failed to set socket permissions: %w", err)
+	if err = os.Chmod(d.config.SocketPath, 0660); err != nil {
+		d.logger.Error("Failed to set socket permissions", "path", d.config.SocketPath, "error", err)
+		return fmt.Errorf("failed to set socket permissions for %s: %w", d.config.SocketPath, err)
 	}
 
-	fmt.Printf("Daemon starting, listening on %s\n", d.SocketPath)
-
-	startedProcesses := make([]ManagedProcess, 0, len(d.processes))
-	for _, p := range d.processes {
-		fmt.Printf("Starting process: %s...\n", p.Name())
-		if err = p.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to start process %s: %v\n", p.Name(), err)
-			d.stopProcesses(startedProcesses, "startup rollback")
-			// Return error, deferred cleanup will handle listener/socket
-			return fmt.Errorf("failed to start process %s: %w", p.Name(), err)
-		}
-		fmt.Printf("Process %s started successfully\n", p.Name())
-		startedProcesses = append(startedProcesses, p)
-	}
+	d.logger.Info("Daemon starting, listening on socket", "path", d.config.SocketPath)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go d.handleSignals(sigChan)
 
 	d.wg.Add(1)
 	go func() {
@@ -87,271 +130,335 @@ func (d *Daemon) Start() error {
 		d.acceptConnections()
 	}()
 
-	go d.handleSignals(sigChan)
-
-	fmt.Println("Daemon and all processes started successfully.")
-	return nil // Clear err variable before returning nil
+	cleanupListener = false // Listener ownership transferred to acceptConnections goroutine
+	d.logger.Info("Daemon started successfully")
+	return nil
 }
 
 func (d *Daemon) Stop() {
-	d.startMu.Lock()
-
-	select {
-	case <-d.stopChan:
-		fmt.Println("Stop already in progress or completed.")
-		d.startMu.Unlock()
-		return
-	default:
-		fmt.Println("Initiating daemon shutdown...")
+	d.stopOnce.Do(func() {
+		d.logger.Info("Initiating daemon shutdown...")
 		close(d.stopChan)
-	}
-	d.startMu.Unlock()
 
-	if d.listener != nil {
-		fmt.Println("Closing listener socket...")
-		d.listener.Close()
-	}
+		if d.listener != nil {
+			d.logger.Info("Closing listener socket", "path", d.config.SocketPath)
+			if err := d.listener.Close(); err != nil {
+				if !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "use of closed network connection") {
+					d.logger.Error("Error closing listener", "path", d.config.SocketPath, "error", err)
+				}
+			}
+		}
 
-	d.connMu.Lock()
-	fmt.Println("Closing active client connections...")
-	closedConnections := make([]net.Conn, 0, len(d.connections))
-	for conn := range d.connections {
-		closedConnections = append(closedConnections, conn)
-	}
-	d.connMu.Unlock() // Unlock before closing connections
+		d.closeConnections()
 
-	for _, conn := range closedConnections {
-		conn.Close() // Close connections outside the lock
-	}
+		d.logger.Info("Waiting for active connections and loops to finish...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), d.config.ShutdownTimeout)
+		defer cancel()
 
-	fmt.Println("Waiting for connection handler loop to exit...")
-	d.wg.Wait()
+		done := make(chan struct{})
+		go func() {
+			d.wg.Wait()
+			close(done)
+		}()
 
-	fmt.Println("Stopping managed processes...")
-	d.startMu.Lock() // Lock only to safely copy the slice
-	processesToStop := make([]ManagedProcess, len(d.processes))
-	copy(processesToStop, d.processes)
-	d.startMu.Unlock()
-	d.stopProcesses(processesToStop, "shutdown")
+		select {
+		case <-done:
+			d.logger.Info("All connections and loops finished gracefully.")
+		case <-shutdownCtx.Done():
+			d.logger.Warn("Shutdown timeout exceeded waiting for active connections.")
+		}
 
-	fmt.Println("Removing socket file...")
-	os.RemoveAll(d.SocketPath)
-	fmt.Println("Daemon stopped.")
+		d.logger.Info("Removing socket file", "path", d.config.SocketPath)
+		if err := os.RemoveAll(d.config.SocketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			d.logger.Error("Failed to remove socket file during shutdown", "path", d.config.SocketPath, "error", err)
+		}
+
+		d.logger.Info("Daemon stopped.")
+	})
 }
 
-func (d *Daemon) stopProcesses(processesToStop []ManagedProcess, reason string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	var stopWg sync.WaitGroup
-	errs := make(chan error, len(processesToStop))
-
-	for i := len(processesToStop) - 1; i >= 0; i-- {
-		p := processesToStop[i]
-		stopWg.Add(1)
-		go func(proc ManagedProcess) {
-			defer stopWg.Done()
-			fmt.Printf("Stopping process (%s): %s...\n", reason, proc.Name())
-			if err := proc.Stop(ctx); err != nil {
-				stopErr := fmt.Errorf("error stopping process %s: %w", proc.Name(), err)
-				fmt.Fprintf(os.Stderr, "%v\n", stopErr)
-				errs <- stopErr
-			} else {
-				fmt.Printf("Process %s stopped successfully\n", proc.Name())
-			}
-		}(p)
+func (d *Daemon) closeConnections() {
+	d.connMu.Lock()
+	if len(d.connections) == 0 {
+		d.connMu.Unlock()
+		d.logger.Debug("No active client connections to close.")
+		return
 	}
 
-	stopWg.Wait()
-	close(errs)
-
-	for err := range errs {
-		fmt.Fprintf(os.Stderr, "Collected stop error (%s): %v\n", reason, err)
+	d.logger.Info("Closing active client connections", "count", len(d.connections))
+	connsToClose := make([]net.Conn, 0, len(d.connections))
+	for conn := range d.connections {
+		connsToClose = append(connsToClose, conn)
 	}
-	fmt.Printf("Finished stopping processes for reason: %s\n", reason)
+	d.connections = make(map[net.Conn]struct{})
+	d.connMu.Unlock()
+
+	var closeWg sync.WaitGroup
+	for _, conn := range connsToClose {
+		closeWg.Add(1)
+		go func(c net.Conn) {
+			defer closeWg.Done()
+			// Set a short deadline for potentially sending a shutdown message
+			c.SetWriteDeadline(time.Now().Add(100 * time.Millisecond))
+			// Optional: Attempt to write a shutdown message, ignore errors
+			// _, _ = c.Write([]byte("SERVER_SHUTTING_DOWN\n"))
+			c.Close()
+		}(conn)
+	}
+	closeWg.Wait()
+	d.logger.Debug("Finished closing client connections.")
 }
 
 func (d *Daemon) acceptConnections() {
-	if d.listener == nil {
-		fmt.Fprintf(os.Stderr, "Error: Listener not initialized in acceptConnections\n")
-		return
-	}
-	fmt.Println("Starting connection accept loop...")
+	d.logger.Info("Starting connection accept loop")
 
 	for {
-		select {
-		case <-d.stopChan:
-			fmt.Println("Accept loop received stop signal, exiting.")
-			return
-		default:
-			var listenerDeadlineSet bool
-			if unixListener, ok := d.listener.(*net.UnixListener); ok {
-				err := unixListener.SetDeadline(time.Now().Add(1 * time.Second))
-				if err != nil {
-					if errors.Is(err, net.ErrClosed) {
-						fmt.Println("Listener closed while setting deadline, exiting accept loop.")
-						return
-					}
-					fmt.Fprintf(os.Stderr, "Error setting listener deadline: %v\n", err)
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
-				listenerDeadlineSet = true
-			} else if d.listener.Addr().Network() != "unix" { // Corrected string comparison
-				fmt.Fprintf(os.Stderr, "Warning: Listener is not a standard Unix listener, cannot set deadline reliably. Accept might block.\n")
-			}
-
-			conn, err := d.listener.Accept()
-			if err != nil {
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					continue
-				}
+		var acceptDeadline time.Time
+		if unixListener, ok := d.listener.(*net.UnixListener); ok {
+			acceptDeadline = time.Now().Add(1 * time.Second)
+			if err := unixListener.SetDeadline(acceptDeadline); err != nil {
 				if errors.Is(err, net.ErrClosed) {
-					if !listenerDeadlineSet {
-						fmt.Println("Listener closed (detected in Accept), exiting accept loop.")
-					} // If deadline was set, ErrClosed handled above or here indicates normal shutdown
+					d.logger.Info("Listener closed (detected in SetDeadline), exiting accept loop.")
 					return
 				}
-				fmt.Fprintf(os.Stderr, "Daemon accept error: %v\n", err)
-				time.Sleep(100 * time.Millisecond)
-				continue
+				d.logger.Error("Error setting listener deadline", "error", err)
 			}
+		} else if d.listener != nil {
+			d.logger.Warn("Listener is not a standard Unix listener, cannot set non-blocking deadline.")
+		} else {
+			d.logger.Error("Listener is nil in acceptConnections, exiting loop")
+			return
+		}
 
-			fmt.Println("Accepted new client connection")
-			d.connMu.Lock()
-			// Check if daemon is stopping before adding connection
+		conn, err := d.listener.Accept()
+		if err != nil {
 			select {
 			case <-d.stopChan:
-				d.connMu.Unlock()
-				conn.Close() // Close newly accepted connection if stopping
-				fmt.Println("Daemon stopping, rejected new connection.")
-				continue // Go back to check stopChan again
+				d.logger.Info("Stop signal received, exiting accept loop.")
+				return
 			default:
-				// Not stopping, add connection
-				d.connections[conn] = struct{}{}
 			}
-			d.connMu.Unlock()
-			go d.handleConnection(conn)
+
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue
+			}
+			if errors.Is(err, net.ErrClosed) || strings.Contains(err.Error(), "use of closed network connection") {
+				d.logger.Info("Listener closed while accepting, exiting accept loop.")
+				return
+			}
+
+			d.logger.Error("Daemon accept error", "error", err)
+			time.Sleep(100 * time.Millisecond) // Avoid busy-looping on persistent errors
+			continue
 		}
+
+		select {
+		case <-d.stopChan:
+			d.logger.Info("Daemon stopping, rejecting newly accepted connection.", "remote_addr", conn.RemoteAddr())
+			conn.Close()
+			continue
+		default:
+		}
+
+		d.logger.Info("Accepted new client connection", "remote_addr", conn.RemoteAddr())
+
+		d.connMu.Lock()
+		d.connections[conn] = struct{}{}
+		d.connMu.Unlock()
+
+		d.wg.Add(1)
+		go func(c net.Conn) {
+			defer d.wg.Done()
+			d.handleConnection(c)
+		}(conn)
 	}
 }
 
 func (d *Daemon) handleConnection(conn net.Conn) {
-	connID := fmt.Sprintf("%v", conn.RemoteAddr()) // Simple ID
-
+	remoteAddr := conn.RemoteAddr().String()
 	defer func() {
-		fmt.Printf("Closing connection (%s)\n", connID)
+		d.logger.Debug("Closing connection handler", "remote_addr", remoteAddr)
 		conn.Close()
 		d.connMu.Lock()
 		delete(d.connections, conn)
 		d.connMu.Unlock()
-		fmt.Printf("Connection closed and removed (%s)\n", connID)
+		d.logger.Info("Connection closed and removed", "remote_addr", remoteAddr)
 	}()
 
-	fmt.Printf("Handling connection (%s)...\n", connID)
+	d.logger.Debug("Handling connection", "remote_addr", remoteAddr)
+	reader := bufio.NewReader(conn)
 
-	readCtx, readCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer readCancel()
-	if dl, ok := readCtx.Deadline(); ok {
-		err := conn.SetReadDeadline(dl)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error setting read deadline for conn (%s): %v\n", connID, err)
-			return
-		}
-	}
-
-	buffer := make([]byte, 256)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			fmt.Fprintf(os.Stderr, "Client connection read timeout (%s)\n", connID)
-			// Try to inform client, ignore error as connection might be dead
-			conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			conn.Write([]byte("TIMEOUT: No command received.\n"))
-			conn.SetWriteDeadline(time.Time{})
-			return
-		}
-		if errors.Is(err, io.EOF) {
-			fmt.Printf("Client (%s) closed connection (EOF).\n", connID)
-			return
-		}
-		if errors.Is(err, net.ErrClosed) {
-			fmt.Printf("Connection (%s) was closed before read completed.\n", connID)
-			return
-		}
-		fmt.Fprintf(os.Stderr, "Error reading from client (%s): %v\n", connID, err)
-		return
-	}
-	// Reset read deadline immediately after read
-	conn.SetReadDeadline(time.Time{})
-
-	command := string(buffer[:n])
-	command = strings.TrimSpace(command)
-
-	fmt.Printf("Received command from (%s): '%s'\n", connID, command)
-
-	var response string
-	var writeErr error
-
-	respCtx, respCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer respCancel()
-
-	if dl, ok := respCtx.Deadline(); ok { // Corrected use of Deadline()
-		err := conn.SetWriteDeadline(dl)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error setting write deadline for conn (%s): %v\n", connID, err)
-			// Continue; attempt write but it might fail
-		}
-	} else {
-		// Should not happen with WithTimeout, but good practice
-		fmt.Fprintf(os.Stderr, "Could not get deadline from response context for conn (%s)\n", connID)
-	}
-
-	switch command {
-	case "STOP":
-		response = "OK: Daemon stop acknowledged. Initiating shutdown...\n"
-		_, writeErr = conn.Write([]byte(response))
-		if writeErr == nil {
-			fmt.Println("STOP command received, triggering daemon shutdown asynchronously.")
-			go d.Stop() // Trigger async
-		}
-
-	case "PING":
-		response = "PONG\n"
-		_, writeErr = conn.Write([]byte(response))
-
-	case "STATUS":
-		d.connMu.RLock()
-		connCount := len(d.connections)
-		d.connMu.RUnlock()
-		// Assuming RegisterProcess is only called before Start
-		processCount := len(d.processes)
-		response = fmt.Sprintf("OK: Status: %d active client connection(s), %d managed process(es).\n", connCount, processCount)
-		_, writeErr = conn.Write([]byte(response))
-
-	default:
-		response = fmt.Sprintf("ERROR: Unknown command '%s'. Available commands: PING, STOP, STATUS\n", command)
-		_, writeErr = conn.Write([]byte(response))
-	}
-
-	if writeErr != nil {
+	for {
 		select {
-		case <-respCtx.Done(): // Check if context timed out
-			fmt.Fprintf(os.Stderr, "Timeout writing response '%s' to client (%s): %v\n", strings.TrimSpace(response), connID, respCtx.Err())
+		case <-d.stopChan:
+			d.logger.Info("Stop signal received during handling, closing connection", "remote_addr", remoteAddr)
+			return
 		default:
-			if !errors.Is(writeErr, net.ErrClosed) {
-				fmt.Fprintf(os.Stderr, "Error writing response '%s' to client (%s): %v\n", strings.TrimSpace(response), connID, writeErr)
+		}
+
+		if d.config.ReadTimeout > 0 {
+			if err := conn.SetReadDeadline(time.Now().Add(d.config.ReadTimeout)); err != nil {
+				d.logger.Error("Failed to set read deadline", "remote_addr", remoteAddr, "error", err)
+				return
 			}
 		}
+
+		commandLine, err := reader.ReadString('\n')
+
+		// Clear deadline immediately after read attempt completes (success or fail)
+		if d.config.ReadTimeout > 0 {
+			// Ignoring error on clearing deadline as the connection might already be failed/closed
+			_ = conn.SetReadDeadline(time.Time{})
+		}
+
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				d.logger.Warn("Client connection read timeout", "remote_addr", remoteAddr)
+				_ = d.writeResponse(conn, "TIMEOUT: No command received within timeout.\n", remoteAddr)
+				return
+			}
+			if errors.Is(err, io.EOF) {
+				d.logger.Info("Client closed connection (EOF)", "remote_addr", remoteAddr)
+				return
+			}
+			if errors.Is(err, net.ErrClosed) || strings.Contains(err.Error(), "use of closed network connection") {
+				d.logger.Info("Connection closed while reading", "remote_addr", remoteAddr)
+				return
+			}
+			d.logger.Error("Error reading from client", "remote_addr", remoteAddr, "error", err)
+			return
+		}
+
+		commandLine = strings.TrimSpace(commandLine)
+		if commandLine == "" {
+			continue
+		}
+
+		d.logger.Debug("Received command line", "remote_addr", remoteAddr, "command_line", commandLine)
+
+		parts := strings.Fields(commandLine)
+		commandName := strings.ToUpper(parts[0])
+		args := parts[1:]
+
+		var response string
+		var cmdErr error
+
+		d.cmdMu.RLock()
+		handler, found := d.commands[commandName]
+		d.cmdMu.RUnlock()
+
+		if found {
+			cmdCtx, cmdCancel := context.WithTimeout(context.Background(), d.config.CommandExecTimeout)
+			response, cmdErr = handler(cmdCtx, args)
+			cmdCancel()
+
+			if errors.Is(cmdErr, context.DeadlineExceeded) {
+				d.logger.Error("Command execution timed out", "remote_addr", remoteAddr, "command", commandName)
+				// Overwrite cmdErr to provide a clearer error message to client
+				cmdErr = fmt.Errorf("command '%s' timed out after %v", commandName, d.config.CommandExecTimeout)
+			}
+
+		} else {
+			cmdErr = fmt.Errorf("unknown command '%s'", commandName)
+		}
+
+		if cmdErr != nil {
+			d.logger.Error("Command execution failed", "remote_addr", remoteAddr, "command", commandName, "args", args, "error", cmdErr)
+			response = fmt.Sprintf("ERROR: %v\n", cmdErr)
+		} else {
+			if !strings.HasSuffix(response, "\n") {
+				response += "\n"
+			}
+			// Add OK prefix for non-error responses, unless it's PING or already has a prefix structure
+			// A more robust approach might involve command handlers returning a struct with status/payload
+			if commandName != "PING" && !strings.HasPrefix(response, "OK:") && !strings.HasPrefix(response, "ERROR:") {
+				response = "OK: " + response
+			}
+			d.logger.Debug("Command execution successful", "remote_addr", remoteAddr, "command", commandName, "args", args, "response", strings.TrimSpace(response))
+		}
+
+		writeErr := d.writeResponse(conn, response, remoteAddr)
+		if writeErr != nil {
+			return // Error logged by writeResponse, terminate handler
+		}
+
+		if commandName == "STOP" && cmdErr == nil {
+			d.logger.Info("STOP command processed successfully, handler exiting.", "remote_addr", remoteAddr)
+			return // Exit handler loop after successful STOP response
+		}
+	}
+}
+
+func (d *Daemon) writeResponse(conn net.Conn, response string, remoteAddr string) error {
+	if d.config.WriteTimeout > 0 {
+		if err := conn.SetWriteDeadline(time.Now().Add(d.config.WriteTimeout)); err != nil {
+			d.logger.Error("Failed to set write deadline", "remote_addr", remoteAddr, "error", err)
+		}
+		defer func() {
+			// Ignoring error on clearing deadline
+			_ = conn.SetWriteDeadline(time.Time{})
+		}()
 	}
 
-	conn.SetWriteDeadline(time.Time{})
+	_, writeErr := conn.Write([]byte(response))
+	if writeErr != nil {
+		logArgs := []any{"remote_addr", remoteAddr, "response_len", len(response)}
+		if netErr, ok := writeErr.(net.Error); ok && netErr.Timeout() {
+			d.logger.Error("Timeout writing response to client", append(logArgs, "error", writeErr)...)
+		} else if errors.Is(writeErr, net.ErrClosed) || strings.Contains(writeErr.Error(), "use of closed network connection") {
+			d.logger.Warn("Failed to write response, connection closed", append(logArgs, "error", writeErr)...)
+		} else {
+			d.logger.Error("Error writing response to client", append(logArgs, "error", writeErr)...)
+		}
+		return writeErr
+	}
 
-	fmt.Printf("Finished handling command '%s' for connection (%s)\n", command, connID)
+	d.logger.Debug("Successfully wrote response", "remote_addr", remoteAddr, "response_len", len(response))
+	return nil
 }
 
 func (d *Daemon) handleSignals(sigChan chan os.Signal) {
 	sig := <-sigChan
-	fmt.Printf("Received signal %v, stopping daemon...\n", sig)
-	d.Stop()
+	d.logger.Info("Received OS signal", "signal", sig)
+	signal.Stop(sigChan)
+	close(sigChan)
+	go d.Stop() // Trigger stop asynchronously to allow signal handler to return quickly
+}
+
+// --- Default Command Handlers ---
+
+func (d *Daemon) handlePing(ctx context.Context, args []string) (string, error) {
+	return "PONG", nil
+}
+
+func (d *Daemon) handleStatus(ctx context.Context, args []string) (string, error) {
+	d.connMu.RLock()
+	connCount := len(d.connections)
+	d.connMu.RUnlock()
+
+	d.cmdMu.RLock()
+	cmdCount := len(d.commands)
+	cmdNames := make([]string, 0, cmdCount)
+	for name := range d.commands {
+		cmdNames = append(cmdNames, name)
+	}
+	d.cmdMu.RUnlock()
+
+	// Sort command names for consistent output? Optional.
+	// sort.Strings(cmdNames)
+
+	status := fmt.Sprintf(
+		"Connections: %d active\nCommands: %d registered (%s)",
+		connCount,
+		cmdCount,
+		strings.Join(cmdNames, ", "),
+	)
+	// Add more status info like uptime, memory usage if needed
+	return status, nil
+}
+
+func (d *Daemon) handleStop(ctx context.Context, args []string) (string, error) {
+	d.logger.Info("STOP command received via connection, triggering daemon shutdown.")
+	go d.Stop()
+	return "Daemon stop initiated.", nil
 }

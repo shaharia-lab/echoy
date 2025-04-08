@@ -2,16 +2,9 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/shaharia-lab/echoy/internal/chat"
-	"github.com/shaharia-lab/echoy/internal/llm"
-	"github.com/shaharia-lab/echoy/internal/tools"
-	"github.com/shaharia-lab/echoy/internal/webserver"
-	"github.com/shaharia-lab/echoy/internal/webui"
-	"github.com/shaharia-lab/goai"
-	"github.com/shaharia-lab/goai/mcp"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -23,48 +16,46 @@ import (
 	"github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
-	mcpTools "github.com/shaharia-lab/mcp-tools"
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *logger.Logger) *cobra.Command {
+// Simplified parameters: Removed duplicate logger 'l' and unused 'webUIStaticDirectory'
+func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, log *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "Start the Echoy daemon",
-		Long:  `Starts the Echoy daemon that processes background tasks and client requests.`,
+		Long:  `Starts the Echoy daemon process that listens for commands via a Unix socket.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if config.UsageTracking.Enabled {
+			if appConf.UsageTracking.Enabled {
 				telemetryEvent.SendTelemetryEvent(
 					context.Background(),
 					appConfig,
-					"daemon.start",
-					telemetry.SeverityInfo, "Starting daemon",
+					"daemon.start.attempt", // More specific event name
+					telemetry.SeverityInfo, "Attempting to start daemon",
 					nil,
 				)
 			}
 
-			logger.Info("Starting daemon...")
-			defer logger.Sync()
-
 			if !foreground {
-				if isRunning, _ := isDaemonRunning(socketPath); isRunning {
+				log.Info("Attempting to start daemon in background...")
+				if isRunning, _ := isDaemonRunning(socketPath, log); isRunning {
 					msg := "Daemon is already running"
-					logger.Info(msg)
+					log.Info(msg)
 					themeManager.GetCurrentTheme().Info().Println(msg)
 					return nil
 				}
 
 				execPath, err := os.Executable()
 				if err != nil {
+					log.WithField("error", err).Error("failed to get executable path")
 					return fmt.Errorf("failed to get executable path: %w", err)
 				}
 
 				daemonCmd := exec.Command(execPath, "start", "--foreground")
-
 				daemonCmd.Stdout = nil
 				daemonCmd.Stderr = nil
 				daemonCmd.Stdin = nil
@@ -72,73 +63,105 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				setPlatformProcAttr(daemonCmd)
 
 				if err := daemonCmd.Start(); err != nil {
+					log.WithField("error", err).Error("Failed to start daemon process in background")
+					themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon process: %v", err))
 					return fmt.Errorf("failed to start daemon process: %w", err)
 				}
 
-				themeManager.GetCurrentTheme().Success().Println("Daemon started in background mode")
+				// Send telemetry after successful background start attempt
+				if appConf.UsageTracking.Enabled {
+					telemetryEvent.SendTelemetryEvent(
+						context.Background(),
+						appConfig,
+						"daemon.start.background.success",
+						telemetry.SeverityInfo, "Daemon started in background",
+						nil,
+					)
+				}
+
+				successMsg := fmt.Sprintf("Daemon starting in background mode (PID: %d). Listening on %s", daemonCmd.Process.Pid, socketPath)
+				log.Info(successMsg)
+				themeManager.GetCurrentTheme().Success().Println(successMsg)
 				return nil
 			}
 
-			// From here on, we're in foreground mode
-			daemon := NewDaemon(socketPath)
+			log.Info("Starting daemon in foreground mode...")
 
-			ts := []mcp.Tool{
-				mcpTools.GetWeather,
+			// Create Daemon Configuration using the refactored package
+			daemonCfg := Config{
+				SocketPath:         socketPath,
+				Logger:             nil,
+				ShutdownTimeout:    30 * time.Second,
+				ReadTimeout:        10 * time.Second,
+				WriteTimeout:       10 * time.Second,
+				CommandExecTimeout: 5 * time.Second,
 			}
+			daemonInstance := NewDaemon(daemonCfg)
 
-			llmService, err := llm.NewLLMService(config.LLM)
-			if err != nil {
-				logger.Error(fmt.Sprintf("Failed to create LLM service: %v", err))
-				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to create LLM service: %v", err))
-				return err
-			}
+			// ** IMPORTANT: Register command handlers here or elsewhere **
+			// Example: daemonInstance.RegisterCommand("YOUR_COMMAND", yourCommandHandler)
+			// You'll need to implement handlers for tasks like starting webservers, etc.
 
-			historyService := goai.NewInMemoryChatHistoryStorage()
+			// Setup graceful shutdown using context triggered by signals
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop() // Important: releases resources associated with NotifyContext
 
-			chatService := chat.NewChatService(llmService, historyService)
-			chatHandler := chat.NewChatHandler(chatService)
-			webUIDownloaderHttpClient := &http.Client{
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return nil
-				},
-			}
-
-			ws := webserver.NewWebServer(
-				"10222",
-				webUIStaticDirectory,
-				tools.NewProvider(ts),
-				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
-				chatHandler,
-				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, l),
-			)
-			daemon.RegisterProcess(ws)
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
+			// Start the daemon in a separate goroutine so we can wait for the context
+			var startErr error
+			daemonStopped := make(chan struct{})
 			go func() {
-				sig := <-sigChan
-				logger.Info(fmt.Sprintf("Received signal %s, shutting down...", sig))
-				cancel()
+				defer close(daemonStopped)
+				if err := daemonInstance.Start(); err != nil {
+					log.WithField("error", err).Error("Daemon failed to start")
+					startErr = err
+					stop()
+				}
 			}()
 
-			if err := daemon.Start(); err != nil {
-				logger.Error(fmt.Sprintf("Failed to start daemon: %v", err))
-				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon: %v", err))
-				return err
+			// Check immediately if Start failed (e.g., socket in use)
+			// Give Start a very brief moment to potentially fail fast
+			select {
+			case <-time.After(100 * time.Millisecond):
+				log.WithField("socket", daemonCfg.SocketPath).Info("Daemon successfully started and listening")
+				themeManager.GetCurrentTheme().Success().Printf("Daemon started and listening on %s\n", daemonCfg.SocketPath)
+				if appConf.UsageTracking.Enabled {
+					telemetryEvent.SendTelemetryEvent(
+						context.Background(),
+						appConfig,
+						"daemon.start.foreground.success",
+						telemetry.SeverityInfo, "Daemon started in foreground",
+						nil,
+					)
+				}
+			case <-ctx.Done(): // If stop() was called due to immediate Start error
+				if startErr != nil {
+					themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon: %v", startErr))
+					return startErr
+				}
+				// Should not happen unless signal received instantly
+				log.Info("Daemon startup interrupted by signal")
+				return errors.New("daemon startup interrupted")
 			}
 
-			themeManager.GetCurrentTheme().Success().Printf("Daemon started and listening on %s\n", daemon.SocketPath)
-			logger.Info(fmt.Sprintf("Daemon started and listening on %s", daemon.SocketPath))
-
-			// Wait for cancellation
+			// Wait for shutdown signal
 			<-ctx.Done()
-			logger.Info("Stopping daemon...")
-			daemon.Stop()
-			logger.Info("Daemon stopped")
+
+			// Stop was called by the signal handler (or Start error), context is cancelled
+			log.Info("Shutdown signal received, stopping daemon...")
+			themeManager.GetCurrentTheme().Info().Println("Shutting down daemon...")
+
+			// Initiate graceful shutdown
+			daemonInstance.Stop() // This now handles timeouts internally
+
+			// Wait for the daemon Start goroutine to fully exit (after Stop completes)
+			<-daemonStopped
+			log.Info("Daemon stopped gracefully.")
+			themeManager.GetCurrentTheme().Success().Println("Daemon stopped.")
+
+			// Return the start error if it occurred
+			if startErr != nil {
+				return fmt.Errorf("daemon exited with error: %w", startErr)
+			}
 
 			return nil
 		},
@@ -149,32 +172,52 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 	return cmd
 }
 
-// isDaemonRunning checks if the daemon is currently running by attempting to connect to its socket
-func isDaemonRunning(socketPath string) (bool, error) {
-	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
+// isDaemonRunning checks if the daemon is running by pinging its socket.
+// Pass the logger for logging connection attempts/errors.
+func isDaemonRunning(socketPath string, logger *logger.Logger) (bool, error) {
+	logger.WithField("socket", socketPath).Debug("Checking if daemon is running")
+	conn, err := net.DialTimeout("unix", socketPath, 1*time.Second) // Shorter timeout for check
 	if err != nil {
+		logger.WithField("error", err).Debug("Daemon not running or socket unavailable")
 		return false, nil
 	}
 	defer conn.Close()
 
-	// Try to ping the daemon
+	if err = conn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
+		logger.WithField("error", err).Debug("Failed to set write deadline for ping")
+		return false, err
+	}
 	_, err = conn.Write([]byte("PING\n"))
 	if err != nil {
+		logger.WithField("error", err).Debug("Failed to send PING to daemon")
 		return false, err
 	}
 
 	// Read response
-	buffer := make([]byte, 128)
-	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	if err != nil {
+	if err = conn.SetReadDeadline(time.Now().Add(1 * time.Second)); err != nil {
+		logger.WithField("error", err).Debug("Failed to set read deadline for pong")
 		return false, err
 	}
-
+	buffer := make([]byte, 128)
 	n, err := conn.Read(buffer)
 	if err != nil {
+		if errors.Is(err, os.ErrDeadlineExceeded) {
+			logger.Warn("Daemon did not respond to PING within timeout")
+		} else {
+			logger.WithField("error", err).Warn("Failed to read PONG from daemon")
+		}
 		return false, err
 	}
 
 	response := string(buffer[:n])
-	return strings.TrimSpace(response) == "PONG", nil
+	trimmedResponse := strings.TrimSpace(response)
+	logger.WithField("response", trimmedResponse).Debug("Daemon response to PING")
+
+	if trimmedResponse == "PONG" {
+		logger.Debug("Daemon responded PONG successfully")
+		return true, nil
+	}
+
+	logger.WithField("response", trimmedResponse).Debug("Daemon responded to PING unexpectedly")
+	return false, fmt.Errorf("unexpected response from daemon: %s", trimmedResponse)
 }
