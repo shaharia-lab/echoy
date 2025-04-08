@@ -109,7 +109,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 				chatHandler,
-				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory, webUIDownloaderHttpClient),
+				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient),
 			)
 			daemon.WithWebServer(ws)
 

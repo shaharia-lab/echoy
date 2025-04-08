@@ -150,7 +150,7 @@ func (ws *WebServer) prepareWebUIFrontendDirectory() error {
 	}
 
 	log.Printf("Downloading frontend files...")
-	if err := ws.frontendDownloader.DownloadFrontend(); err != nil {
+	if err := ws.frontendDownloader.DownloadFrontend("latest"); err != nil {
 		log.Printf("Failed to download frontend files: %v", err)
 		return fmt.Errorf("failed to download frontend files: %w", err)
 	}

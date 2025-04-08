@@ -209,10 +209,10 @@ func TestDownloadFrontend(t *testing.T) {
 			}
 
 			// Create the downloader with our mock client
-			downloader := NewFrontendGitHubReleaseDownloader(tt.version, testDir, mockClient)
+			downloader := NewFrontendGitHubReleaseDownloader(testDir, mockClient)
 
 			// Call the method we're testing
-			err := downloader.DownloadFrontend()
+			err := downloader.DownloadFrontend(tt.version)
 
 			// Check the result
 			if (err != nil) != tt.wantErr {

@@ -5,7 +5,6 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,7 +29,7 @@ type HTTPClient interface {
 
 // FrontendDownloader is an interface for downloading the frontend assets.
 type FrontendDownloader interface {
-	DownloadFrontend() error
+	DownloadFrontend(version string) error
 }
 
 type release struct {
@@ -47,22 +46,20 @@ type asset struct {
 
 // FrontendGitHubReleaseDownloader is a struct that implements the FrontendDownloader interface.
 type FrontendGitHubReleaseDownloader struct {
-	Version              string
 	DestinationDirectory string
 	httpClient           HTTPClient
 }
 
 // NewFrontendGitHubReleaseDownloader creates a new instance of FrontendGitHubReleaseDownloader.
-func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string, httpClient HTTPClient) *FrontendGitHubReleaseDownloader {
+func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient HTTPClient) *FrontendGitHubReleaseDownloader {
 	return &FrontendGitHubReleaseDownloader{
-		Version:              version,
 		DestinationDirectory: destinationDirectory,
 		httpClient:           httpClient,
 	}
 }
 
-func (d *FrontendGitHubReleaseDownloader) DownloadFrontend() error {
-	downloadURL, err := d.getDownloadURL()
+func (d *FrontendGitHubReleaseDownloader) DownloadFrontend(version string) error {
+	downloadURL, err := d.getDownloadURL(version)
 	if err != nil {
 		return fmt.Errorf("failed to get download URL: %w", err)
 	}
@@ -80,11 +77,12 @@ func (d *FrontendGitHubReleaseDownloader) DownloadFrontend() error {
 	return nil
 }
 
-func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/latest",
+func (d *FrontendGitHubReleaseDownloader) getReleaseURL(releasePath string, releaseIdentifier string) (string, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/%s",
 		githubAPIBaseURL,
 		webUIRepoOwner,
 		webUIRepoName,
+		releasePath,
 	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
@@ -99,75 +97,33 @@ func (d *FrontendGitHubReleaseDownloader) getLatestReleaseURL() (string, error) 
 
 	resp, err := d.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("failed to get latest release: %w", err)
+		return "", fmt.Errorf("failed to get release %s: %w", releaseIdentifier, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get latest release, status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("failed to get release %s, status code: %d", releaseIdentifier, resp.StatusCode)
 	}
 
-	var release release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	var rel release
+	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
 		return "", fmt.Errorf("failed to decode release info: %w", err)
 	}
 
-	for _, asset := range release.Assets {
+	for _, asset := range rel.Assets {
 		if asset.Name == assetFileName {
 			return asset.BrowserDownloadURL, nil
 		}
 	}
 
-	return "", errors.New("dist.zip asset not found in the latest release")
+	return "", fmt.Errorf("dist.zip asset not found in release %s", releaseIdentifier)
 }
 
-func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s",
-		githubAPIBaseURL,
-		webUIRepoOwner,
-		webUIRepoName,
-		d.Version,
-	)
-
-	ctx, cancel := context.WithTimeout(context.Background(), downloadTimeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := d.httpClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to get release %s: %w", d.Version, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get release %s, status code: %d", d.Version, resp.StatusCode)
-	}
-
-	var release release
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		return "", fmt.Errorf("failed to decode release info: %w", err)
-	}
-
-	for _, asset := range release.Assets {
-		if asset.Name == assetFileName {
-			return asset.BrowserDownloadURL, nil
-		}
-	}
-
-	return "", fmt.Errorf("dist.zip asset not found in release %s", d.Version)
-}
-
-func (d *FrontendGitHubReleaseDownloader) getDownloadURL() (string, error) {
-	if d.Version == "latest" {
-		return d.getLatestReleaseURL()
+func (d *FrontendGitHubReleaseDownloader) getDownloadURL(version string) (string, error) {
+	if version == "latest" {
+		return d.getReleaseURL("releases/latest", "latest")
 	} else {
-		return d.getSpecificReleaseURL()
+		return d.getReleaseURL(fmt.Sprintf("releases/tags/%s", version), version)
 	}
 }
 
