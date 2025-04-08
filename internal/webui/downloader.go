@@ -23,6 +23,11 @@ const (
 	downloadTimeout  = 60 * time.Second
 )
 
+// HTTPClient is an interface that wraps the Do method, allowing for custom HTTP clients.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // FrontendDownloader is an interface for downloading the frontend assets.
 type FrontendDownloader interface {
 	DownloadFrontend() error
@@ -44,11 +49,11 @@ type asset struct {
 type FrontendGitHubReleaseDownloader struct {
 	Version              string
 	DestinationDirectory string
-	httpClient           *http.Client
+	httpClient           HTTPClient
 }
 
 // NewFrontendGitHubReleaseDownloader creates a new instance of FrontendGitHubReleaseDownloader.
-func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string, httpClient *http.Client) *FrontendGitHubReleaseDownloader {
+func NewFrontendGitHubReleaseDownloader(version string, destinationDirectory string, httpClient HTTPClient) *FrontendGitHubReleaseDownloader {
 	return &FrontendGitHubReleaseDownloader{
 		Version:              version,
 		DestinationDirectory: destinationDirectory,
@@ -159,33 +164,11 @@ func (d *FrontendGitHubReleaseDownloader) getSpecificReleaseURL() (string, error
 }
 
 func (d *FrontendGitHubReleaseDownloader) getDownloadURL() (string, error) {
-	version := "latest"
-	if d.Version != "" {
-		version = d.Version
+	if d.Version == "latest" {
+		return d.getLatestReleaseURL()
+	} else {
+		return d.getSpecificReleaseURL()
 	}
-
-	// For GitHub public repositories, we can directly form the download URL
-	// The format for assets is: https://github.com/{owner}/{repo}/releases/download/{tag}/{filename}
-	// For latest, we need to make a redirect request or use the GitHub API properly
-
-	if version == "latest" {
-		// For the latest release, we'll try a different approach
-		url := fmt.Sprintf("https://github.com/%s/%s/releases/latest/download/%s",
-			webUIRepoOwner,
-			webUIRepoName,
-			assetFileName,
-		)
-		return url, nil
-	}
-
-	// For specific versions
-	url := fmt.Sprintf("https://github.com/%s/%s/releases/download/%s/%s",
-		webUIRepoOwner,
-		webUIRepoName,
-		d.Version,
-		assetFileName,
-	)
-	return url, nil
 }
 
 func (d *FrontendGitHubReleaseDownloader) downloadAsset(url string) (string, error) {
