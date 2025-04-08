@@ -144,7 +144,7 @@ func (d *Daemon) Start() error {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go d.handleSignals(sigChan) // Handles OS signals
+	go d.handleSignals(sigChan)
 
 	d.wg.Add(1)
 	go func() {
