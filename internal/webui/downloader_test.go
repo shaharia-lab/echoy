@@ -4,6 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"errors"
+	"github.com/shaharia-lab/echoy/internal/logger"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"os"
@@ -204,8 +207,11 @@ func TestDownloadFrontend(t *testing.T) {
 				t.Fatalf("Failed to create test dir: %v", err)
 			}
 
-			downloader := NewFrontendGitHubReleaseDownloader(testDir, mockClient)
-			err := downloader.DownloadFrontend(tt.version)
+			noOpLogger, err := logger.NewLogger(logger.Config{}, zap.NewNop())
+			assert.NoError(t, err)
+
+			downloader := NewFrontendGitHubReleaseDownloader(testDir, mockClient, noOpLogger)
+			err = downloader.DownloadFrontend(tt.version)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DownloadFrontend() error = %v, wantErr %v", err, tt.wantErr)

@@ -94,7 +94,7 @@ func TestBuildZapLogger(t *testing.T) {
 			UseConsole: false,
 		}
 
-		zapLogger, err := buildZapLogger(config)
+		zapLogger, err := BuildZapLogger(config)
 		require.NoError(t, err)
 		assert.NotNil(t, zapLogger)
 
@@ -110,7 +110,7 @@ func TestBuildZapLogger(t *testing.T) {
 			UseConsole: true,
 		}
 
-		zapLogger, err := buildZapLogger(config)
+		zapLogger, err := BuildZapLogger(config)
 		require.NoError(t, err)
 		assert.NotNil(t, zapLogger)
 	})
@@ -125,7 +125,7 @@ func TestBuildZapLogger(t *testing.T) {
 			UseConsole: true,
 		}
 
-		zapLogger, err := buildZapLogger(config)
+		zapLogger, err := BuildZapLogger(config)
 		require.NoError(t, err)
 		assert.NotNil(t, zapLogger)
 

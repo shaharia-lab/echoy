@@ -70,11 +70,6 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.SocketFilePath = path.Join(container.Paths[filesystem.AppDirectory], "echoy.sock")
 
-	loggerConfig := logger.Config{
-		FilePath: container.Paths[filesystem.LogsFilePath],
-		LogLevel: logger.DebugLevel,
-	}
-
 	systemConfig, err := container.Filesystem.GetSystemConfig()
 	if err != nil {
 		return container, fmt.Errorf("failed to get system config: %w", err)
@@ -82,7 +77,16 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.Config.SystemConfig = systemConfig
 
-	container.Logger, err = logger.NewLogger(loggerConfig)
+	loggerConfig := logger.Config{
+		FilePath:  container.Paths[filesystem.LogsFilePath],
+		LogLevel:  logger.DebugLevel,
+		MaxSizeMB: logger.DefaultMaxSizeMB,
+	}
+	zapLogger, err := logger.BuildZapLogger(loggerConfig)
+	if err != nil {
+		return nil, err
+	}
+	container.Logger, err = logger.NewLogger(loggerConfig, zapLogger)
 	if err != nil {
 		return container, fmt.Errorf("failed to initialize logger: %w", err)
 	}

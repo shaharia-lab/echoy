@@ -29,7 +29,7 @@ import (
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string) *cobra.Command {
+func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *logger.Logger) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
@@ -109,7 +109,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 				chatHandler,
-				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient),
+				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, l),
 			)
 			daemon.WithWebServer(ws)
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"io"
 	"net/http"
 	"os"
@@ -48,32 +49,48 @@ type asset struct {
 type FrontendGitHubReleaseDownloader struct {
 	DestinationDirectory string
 	httpClient           HTTPClient
+	logger               *logger.Logger
 }
 
 // NewFrontendGitHubReleaseDownloader creates a new instance of FrontendGitHubReleaseDownloader.
-func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient HTTPClient) *FrontendGitHubReleaseDownloader {
+func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient HTTPClient, logger *logger.Logger) *FrontendGitHubReleaseDownloader {
 	return &FrontendGitHubReleaseDownloader{
 		DestinationDirectory: destinationDirectory,
 		httpClient:           httpClient,
+		logger:               logger,
 	}
 }
 
 // DownloadFrontend downloads the frontend assets from a GitHub release and extracts them to the specified directory.
 func (d *FrontendGitHubReleaseDownloader) DownloadFrontend(version string) error {
+	d.logger.WithField("version", version).Info("Downloading frontend assets...")
 	downloadURL, err := d.getDownloadURL(version)
 	if err != nil {
+		d.logger.WithField("error", err).Error("Failed to get download URL")
 		return fmt.Errorf("failed to get download URL: %w", err)
 	}
 
+	d.logger.WithFields(map[string]interface{}{"version": version, "download_url": downloadURL}).Info("Downloading frontend asset...")
 	zipPath, err := d.downloadAsset(downloadURL)
 	if err != nil {
+		d.logger.WithField("error", err).Error("Failed to download frontend asset")
 		return fmt.Errorf("failed to download frontend asset: %w", err)
 	}
 	defer os.Remove(zipPath)
 
+	d.logger.WithField("zip_path", zipPath).Info("Extracting frontend asset...")
+
 	if err := d.extractZip(zipPath); err != nil {
+		d.logger.WithField("error", err).Error("Failed to extract frontend asset")
 		return fmt.Errorf("failed to extract frontend: %w", err)
 	}
+
+	d.logger.WithFields(map[string]interface{}{
+		"zip_path":              zipPath,
+		"destination_directory": d.DestinationDirectory,
+		"version":               version,
+		"download_url":          downloadURL,
+	}).Info("Frontend assets downloaded and extracted successfully")
 
 	return nil
 }
