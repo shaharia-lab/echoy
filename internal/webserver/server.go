@@ -139,8 +139,12 @@ func (ws *WebServer) prepareWebUIFrontendDirectory() error {
 	distDirPath := filepath.Join(ws.webStaticDirectory, frontendBuildDirectoryName)
 
 	if info, err := os.Stat(distDirPath); err == nil && info.IsDir() {
-		log.Printf("Frontend files directory already exists at %s", distDirPath)
-		return nil
+		if time.Since(info.ModTime()) > 24*time.Hour {
+			log.Printf("Frontend files directory exists but is older than 24 hours, downloading fresh copy")
+		} else {
+			log.Printf("Frontend files directory already exists at %s and is recent", distDirPath)
+			return nil
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("failed to check frontend directory: %w", err)
 	}
@@ -150,7 +154,7 @@ func (ws *WebServer) prepareWebUIFrontendDirectory() error {
 	}
 
 	log.Printf("Downloading frontend files...")
-	if err := ws.frontendDownloader.DownloadFrontend(); err != nil {
+	if err := ws.frontendDownloader.DownloadFrontend("latest"); err != nil {
 		log.Printf("Failed to download frontend files: %v", err)
 		return fmt.Errorf("failed to download frontend files: %w", err)
 	}

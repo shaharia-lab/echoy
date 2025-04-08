@@ -17,17 +17,17 @@ func (_m *MockFrontendDownloader) EXPECT() *MockFrontendDownloader_Expecter {
 	return &MockFrontendDownloader_Expecter{mock: &_m.Mock}
 }
 
-// DownloadFrontend provides a mock function with no fields
-func (_m *MockFrontendDownloader) DownloadFrontend() error {
-	ret := _m.Called()
+// DownloadFrontend provides a mock function with given fields: version
+func (_m *MockFrontendDownloader) DownloadFrontend(version string) error {
+	ret := _m.Called(version)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DownloadFrontend")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(version)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -41,13 +41,14 @@ type MockFrontendDownloader_DownloadFrontend_Call struct {
 }
 
 // DownloadFrontend is a helper method to define mock.On call
-func (_e *MockFrontendDownloader_Expecter) DownloadFrontend() *MockFrontendDownloader_DownloadFrontend_Call {
-	return &MockFrontendDownloader_DownloadFrontend_Call{Call: _e.mock.On("DownloadFrontend")}
+//   - version string
+func (_e *MockFrontendDownloader_Expecter) DownloadFrontend(version interface{}) *MockFrontendDownloader_DownloadFrontend_Call {
+	return &MockFrontendDownloader_DownloadFrontend_Call{Call: _e.mock.On("DownloadFrontend", version)}
 }
 
-func (_c *MockFrontendDownloader_DownloadFrontend_Call) Run(run func()) *MockFrontendDownloader_DownloadFrontend_Call {
+func (_c *MockFrontendDownloader_DownloadFrontend_Call) Run(run func(version string)) *MockFrontendDownloader_DownloadFrontend_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -57,7 +58,7 @@ func (_c *MockFrontendDownloader_DownloadFrontend_Call) Return(_a0 error) *MockF
 	return _c
 }
 
-func (_c *MockFrontendDownloader_DownloadFrontend_Call) RunAndReturn(run func() error) *MockFrontendDownloader_DownloadFrontend_Call {
+func (_c *MockFrontendDownloader_DownloadFrontend_Call) RunAndReturn(run func(string) error) *MockFrontendDownloader_DownloadFrontend_Call {
 	_c.Call.Return(run)
 	return _c
 }
