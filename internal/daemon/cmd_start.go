@@ -11,6 +11,7 @@ import (
 	"github.com/shaharia-lab/goai"
 	"github.com/shaharia-lab/goai/mcp"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -28,7 +29,7 @@ import (
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string) *cobra.Command {
+func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *logger.Logger) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{
@@ -96,6 +97,11 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 
 			chatService := chat.NewChatService(llmService, historyService)
 			chatHandler := chat.NewChatHandler(chatService)
+			webUIDownloaderHttpClient := &http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return nil
+				},
+			}
 
 			ws := webserver.NewWebServer(
 				"10222",
@@ -103,7 +109,7 @@ func NewStartCmd(config config.Config, appConfig *config.AppConfig, logger *logg
 				tools.NewProvider(ts),
 				llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 				chatHandler,
-				webui.NewFrontendGitHubReleaseDownloader("latest", webUIStaticDirectory),
+				webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, l),
 			)
 			daemon.WithWebServer(ws)
 
