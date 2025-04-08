@@ -2,9 +2,14 @@ package daemon
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -178,4 +183,149 @@ func tempSocketPath(t *testing.T) string {
 
 func testLogger(buf *bytes.Buffer) *slog.Logger {
 	return slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+}
+
+// createTestDaemon provides a helper to setup a daemon for connection tests
+func createTestDaemon(t *testing.T, cfg Config) (*Daemon, string) {
+	t.Helper()
+	if cfg.SocketPath == "" {
+		cfg.SocketPath = tempSocketPath(t)
+	}
+	if cfg.Logger == nil {
+		// Default to discard logger for most tests unless specific logs needed
+		cfg.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	if cfg.ReadTimeout == 0 {
+		cfg.ReadTimeout = 1 * time.Second // Use shorter timeouts for tests
+	}
+	if cfg.WriteTimeout == 0 {
+		cfg.WriteTimeout = 1 * time.Second
+	}
+	if cfg.CommandExecTimeout == 0 {
+		cfg.CommandExecTimeout = 500 * time.Millisecond
+	}
+
+	d := NewDaemon(cfg)
+	if d == nil {
+		t.Fatal("NewDaemon returned nil")
+	}
+	return d, cfg.SocketPath
+}
+
+func waitForWg(t *testing.T, wg *sync.WaitGroup, timeout time.Duration) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		wg.Wait()
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		t.Errorf("timed out waiting for WaitGroup after %v", timeout)
+	}
+}
+
+func TestHandleConnection_Ping(t *testing.T) {
+	t.Parallel()
+
+	d, _ := createTestDaemon(t, Config{})
+	d.RegisterCommand("PING", DefaultPingHandler)
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	_, err := clientConn.Write([]byte("PING\n"))
+	if err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	responseBytes := make([]byte, 128)
+	n, err := clientConn.Read(responseBytes)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	response := string(responseBytes[:n])
+	expectedResponse := "PONG\n"
+	if response != expectedResponse {
+		t.Errorf("Expected response %q, got %q", expectedResponse, response)
+	}
+
+	clientConn.Close()
+	waitForWg(t, &wg, 2*time.Second)
+}
+
+func TestHandleConnection_UnknownCommand(t *testing.T) {
+	t.Parallel()
+
+	d, _ := createTestDaemon(t, Config{})
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	unknownCmd := "NOSUCHCOMMAND"
+	_, err := clientConn.Write([]byte(unknownCmd + "\n"))
+	if err != nil {
+		t.Fatalf("Write failed: %v", err)
+	}
+
+	responseBytes := make([]byte, 128)
+	n, err := clientConn.Read(responseBytes)
+	if err != nil {
+		t.Fatalf("Read failed: %v", err)
+	}
+
+	response := string(responseBytes[:n])
+	expectedPrefix := fmt.Sprintf("ERROR: unknown command '%s'", unknownCmd)
+	if !strings.HasPrefix(response, expectedPrefix) {
+		t.Errorf("Expected response prefix %q, got %q", expectedPrefix, response)
+	}
+
+	clientConn.Close()
+	waitForWg(t, &wg, 2*time.Second)
+}
+
+func TestHandleConnection_ReadTimeout(t *testing.T) {
+	t.Parallel()
+
+	readTimeout := 50 * time.Millisecond
+	d, _ := createTestDaemon(t, Config{
+		ReadTimeout: readTimeout,
+	})
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	waitForWg(t, &wg, readTimeout*3)
+
+	readBuf := make([]byte, 1)
+	n, err := clientConn.Read(readBuf)
+
+	if err == nil {
+		t.Errorf("Expected error reading from clientConn after server timeout, but got %d bytes", n)
+	} else if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "closed") {
+		t.Errorf("Expected EOF or closed error reading from clientConn, got: %v", err)
+	}
 }
