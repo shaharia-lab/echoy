@@ -20,7 +20,6 @@ func DefaultPingHandler(ctx context.Context, args []string) (string, error) {
 // MakeDefaultStatusHandler creates a status handler closure capturing the daemon instance.
 func MakeDefaultStatusHandler(d *Daemon) CommandFunc {
 	return func(ctx context.Context, args []string) (string, error) {
-		// This inner function now has access to 'd' via closure
 		d.connMu.RLock()
 		connCount := len(d.connections)
 		d.connMu.RUnlock()
@@ -54,9 +53,8 @@ func MakeDefaultStatusHandler(d *Daemon) CommandFunc {
 // MakeDefaultStopHandler creates a stop handler closure capturing the daemon instance.
 func MakeDefaultStopHandler(d *Daemon) CommandFunc {
 	return func(ctx context.Context, args []string) (string, error) {
-		// This inner function now has access to 'd' via closure
 		d.logger.Info("STOP command received via connection, triggering daemon shutdown.")
-		go d.Stop() // Call Stop() on the captured daemon instance
+		go d.Stop()
 		return "Daemon stop initiated.", nil
 	}
 }
