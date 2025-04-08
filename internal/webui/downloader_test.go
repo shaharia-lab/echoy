@@ -10,40 +10,29 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
+
+	"github.com/shaharia-lab/echoy/internal/webui/mocks"
 )
 
-// MockHTTPClient is a mock implementation of the http.Client
-type MockHTTPClient struct {
-	DoFunc func(req *http.Request) (*http.Response, error)
-}
-
-func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	return m.DoFunc(req)
-}
-
-// MockZipCreator creates a simple valid zip file for testing
 func createTestZip(t *testing.T) []byte {
 	t.Helper()
 
-	// Create a buffer to write our zip to
 	buf := new(bytes.Buffer)
 
-	// Create a new zip writer
 	zipWriter := zip.NewWriter(buf)
 
-	// Add a simple file to the zip
 	fileWriter, err := zipWriter.Create("index.html")
 	if err != nil {
 		t.Fatalf("Failed to create file in zip: %v", err)
 	}
 
-	// Write some content to the file
 	_, err = fileWriter.Write([]byte("<html><body>Test</body></html>"))
 	if err != nil {
 		t.Fatalf("Failed to write to file in zip: %v", err)
 	}
 
-	// Close the zip writer
 	if err := zipWriter.Close(); err != nil {
 		t.Fatalf("Failed to close zip writer: %v", err)
 	}
@@ -52,14 +41,12 @@ func createTestZip(t *testing.T) []byte {
 }
 
 func TestDownloadFrontend(t *testing.T) {
-	// Create a temporary directory for tests
 	tempDir, err := os.MkdirTemp("", "frontend-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Create a simple test zip file
 	testZipData := createTestZip(t)
 
 	tests := []struct {
@@ -68,6 +55,7 @@ func TestDownloadFrontend(t *testing.T) {
 		mockResponses []MockResponse
 		wantErr       bool
 		errContains   string
+		expectedFiles []string
 	}{
 		{
 			name:    "successful download latest version",
@@ -84,7 +72,8 @@ func TestDownloadFrontend(t *testing.T) {
 					Body:       string(testZipData),
 				},
 			},
-			wantErr: false,
+			wantErr:       false,
+			expectedFiles: []string{"index.html"},
 		},
 		{
 			name:    "successful download specific version",
@@ -101,7 +90,8 @@ func TestDownloadFrontend(t *testing.T) {
 					Body:       string(testZipData),
 				},
 			},
-			wantErr: false,
+			wantErr:       false,
+			expectedFiles: []string{"index.html"},
 		},
 		{
 			name:    "error getting release info - HTTP error",
@@ -182,39 +172,41 @@ func TestDownloadFrontend(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a mock HTTP client
-			mockClient := &MockHTTPClient{
-				DoFunc: func(req *http.Request) (*http.Response, error) {
-					// Find the matching mock response for the request URL
-					for _, mock := range tt.mockResponses {
-						if req.URL.String() == mock.URL {
-							if mock.Err != nil {
-								return nil, mock.Err
-							}
-							return &http.Response{
-								StatusCode: mock.StatusCode,
-								Body:       io.NopCloser(bytes.NewBufferString(mock.Body)),
-							}, nil
-						}
+			mockClient := mocks.NewMockHTTPClient(t) // Use the constructor from the mocks package
+			for _, mr := range tt.mockResponses {
+				mockResp := mr
+
+				var respBody io.ReadCloser = http.NoBody
+				if mockResp.Body != "" {
+					respBody = io.NopCloser(bytes.NewBufferString(mockResp.Body))
+				}
+
+				var expectedResponse *http.Response
+				var expectedError error
+
+				if mockResp.Err != nil {
+					expectedError = mockResp.Err
+				} else {
+					expectedResponse = &http.Response{
+						StatusCode: mockResp.StatusCode,
+						Body:       respBody,
+						Header:     make(http.Header),
 					}
-					t.Fatalf("Unexpected request to URL: %s", req.URL.String())
-					return nil, nil
-				},
+				}
+
+				mockClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+					return req.URL.String() == mockResp.URL
+				})).Return(expectedResponse, expectedError).Times(1)
 			}
 
-			// Create a destination directory for this test
 			testDir := filepath.Join(tempDir, tt.name)
 			if err := os.MkdirAll(testDir, 0755); err != nil {
 				t.Fatalf("Failed to create test dir: %v", err)
 			}
 
-			// Create the downloader with our mock client
 			downloader := NewFrontendGitHubReleaseDownloader(testDir, mockClient)
-
-			// Call the method we're testing
 			err := downloader.DownloadFrontend(tt.version)
 
-			// Check the result
 			if (err != nil) != tt.wantErr {
 				t.Errorf("DownloadFrontend() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -224,13 +216,26 @@ func TestDownloadFrontend(t *testing.T) {
 				t.Errorf("DownloadFrontend() error = %v, should contain: %v", err, tt.errContains)
 			}
 
-			// For successful tests, we could add additional checks here
-			// For example, verify that files were created in the destination directory
+			if tt.expectedFiles != nil {
+				verifyFilesInDirectory(t, testDir, tt.expectedFiles)
+			}
 		})
 	}
 }
 
-// MockResponse represents a mock HTTP response for testing
+func verifyFilesInDirectory(t *testing.T, dir string, expectedFiles []string) {
+	t.Helper()
+
+	for _, expectedFile := range expectedFiles {
+		filePath := filepath.Join(dir, expectedFile)
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			t.Errorf("Expected file %s does not exist in directory %s", expectedFile, dir)
+		} else if err != nil {
+			t.Errorf("Error checking file %s: %v", expectedFile, err)
+		}
+	}
+}
+
 type MockResponse struct {
 	URL        string
 	StatusCode int

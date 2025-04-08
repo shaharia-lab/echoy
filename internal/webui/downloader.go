@@ -58,6 +58,7 @@ func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient 
 	}
 }
 
+// DownloadFrontend downloads the frontend assets from a GitHub release and extracts them to the specified directory.
 func (d *FrontendGitHubReleaseDownloader) DownloadFrontend(version string) error {
 	downloadURL, err := d.getDownloadURL(version)
 	if err != nil {
