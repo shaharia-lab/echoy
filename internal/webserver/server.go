@@ -139,8 +139,13 @@ func (ws *WebServer) prepareWebUIFrontendDirectory() error {
 	distDirPath := filepath.Join(ws.webStaticDirectory, frontendBuildDirectoryName)
 
 	if info, err := os.Stat(distDirPath); err == nil && info.IsDir() {
-		log.Printf("Frontend files directory already exists at %s", distDirPath)
-		return nil
+		// Check if the directory was modified more than 24 hours ago
+		if time.Since(info.ModTime()) > 24*time.Hour {
+			log.Printf("Frontend files directory exists but is older than 24 hours, downloading fresh copy")
+		} else {
+			log.Printf("Frontend files directory already exists at %s and is recent", distDirPath)
+			return nil
+		}
 	} else if !os.IsNotExist(err) {
 		return fmt.Errorf("failed to check frontend directory: %w", err)
 	}
