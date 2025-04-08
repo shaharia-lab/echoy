@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -77,14 +76,7 @@ func NewDaemon(cfg Config) *Daemon {
 		logger:      cfg.Logger,
 	}
 
-	d.registerDefaultCommands()
 	return d
-}
-
-func (d *Daemon) registerDefaultCommands() {
-	d.RegisterCommand("PING", d.handlePing)
-	d.RegisterCommand("STATUS", d.handleStatus)
-	d.RegisterCommand("STOP", d.handleStop)
 }
 
 // RegisterCommand adds or replaces a command handler. Not safe for concurrent use after Start().
@@ -460,49 +452,4 @@ func (d *Daemon) handleSignals(sigChan chan os.Signal) {
 	d.logger.Info("Received OS signal, initiating shutdown...", "signal", sig)
 	signal.Stop(sigChan)
 	go d.Stop()
-}
-
-func (d *Daemon) handlePing(ctx context.Context, args []string) (string, error) {
-	select {
-	case <-ctx.Done():
-		return "", fmt.Errorf("ping cancelled: %w", ctx.Err())
-	default:
-		return "PONG", nil
-	}
-}
-
-func (d *Daemon) handleStatus(ctx context.Context, args []string) (string, error) {
-	d.connMu.RLock()
-	connCount := len(d.connections)
-	d.connMu.RUnlock()
-
-	d.cmdMu.RLock()
-	cmdCount := len(d.commands)
-	cmdNames := make([]string, 0, cmdCount)
-	for name := range d.commands {
-		cmdNames = append(cmdNames, name)
-	}
-	d.cmdMu.RUnlock()
-
-	sort.Strings(cmdNames)
-
-	select {
-	case <-ctx.Done():
-		return "", fmt.Errorf("status cancelled: %w", ctx.Err())
-	default:
-		status := fmt.Sprintf(
-			"Connections: %d active (Limit: %d)\nCommands: %d registered (%s)",
-			connCount,
-			d.config.MaxConnections,
-			cmdCount,
-			strings.Join(cmdNames, ", "),
-		)
-		return status, nil
-	}
-}
-
-func (d *Daemon) handleStop(ctx context.Context, args []string) (string, error) {
-	d.logger.Info("STOP command received via connection, triggering daemon shutdown.")
-	go d.Stop()
-	return "Daemon stop initiated.", nil
 }
