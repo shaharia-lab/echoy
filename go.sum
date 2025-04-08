@@ -125,8 +125,8 @@ github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b/go.mod h1:01TrycV0kFyex
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.2 h1:3mYCb7aPxS/RU7TI1y4rkEn1oKmPRjNJLNEXgw7MH2I=
 github.com/onsi/gomega v1.4.2/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
-github.com/openai/openai-go v0.1.0-alpha.61 h1:dLJW1Dk15VAwm76xyPsiPt/Ky94NNGoMLETAI1ISoBY=
-github.com/openai/openai-go v0.1.0-alpha.61/go.mod h1:3SdE6BffOX9HPEQv8IL/fi3LYZ5TUpRYaqGQZbyk11A=
+github.com/openai/openai-go v0.1.0-beta.7 h1:ykC09BCIgdXL69wE/8NUjL2rCdAbo9kL3AjnGR6H91o=
+github.com/openai/openai-go v0.1.0-beta.7/go.mod h1:g461MYGXEXBVdV5SaR/5tNzNbSfwTBBefwc+LlDCK0Y=
 github.com/pgvector/pgvector-go v0.2.2 h1:Q/oArmzgbEcio88q0tWQksv/u9Gnb1c3F1K2TnalxR0=
 github.com/pgvector/pgvector-go v0.2.2/go.mod h1:u5sg3z9bnqVEdpe1pkTij8/rFhTaMCMNyQagPDLK8gQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
