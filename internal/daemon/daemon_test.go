@@ -376,3 +376,58 @@ func TestHandleConnection_WriteTimeout(t *testing.T) {
 		t.Errorf("Expected log message %q not found in logs:\n%s", expectedLogMsg, logOutput)
 	}
 }
+
+func TestHandleConnection_CommandExecTimeout(t *testing.T) {
+	t.Parallel()
+
+	execTimeout := 50 * time.Millisecond
+	readWriteTimeout := execTimeout * 4
+
+	d, _ := createTestDaemon(t, Config{
+		CommandExecTimeout: execTimeout,
+		ReadTimeout:        readWriteTimeout,
+		WriteTimeout:       readWriteTimeout,
+	})
+
+	sleepDuration := execTimeout * 2
+
+	d.RegisterCommand("SLOW", func(ctx context.Context, args []string) (string, error) {
+		select {
+		case <-time.After(sleepDuration):
+			return "Finally finished sleeping", nil
+		case <-ctx.Done():
+			return "", fmt.Errorf("handler context cancelled: %w", ctx.Err())
+		}
+	})
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	_, err := clientConn.Write([]byte("SLOW\n"))
+	if err != nil {
+		t.Fatalf("Client write command failed: %v", err)
+	}
+
+	responseBytes := make([]byte, 256)
+	n, err := clientConn.Read(responseBytes)
+	if err != nil {
+		t.Fatalf("Client read failed: %v", err)
+	}
+
+	response := string(responseBytes[:n])
+	expectedErrorMsg := fmt.Sprintf("ERROR: command 'SLOW' timed out after %v", execTimeout)
+
+	if !strings.HasPrefix(response, expectedErrorMsg) {
+		t.Errorf("Expected response prefix %q, got %q", expectedErrorMsg, response)
+	}
+
+	clientConn.Close()
+	waitForWg(t, &wg, readWriteTimeout)
+}
