@@ -12,6 +12,7 @@ import (
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/shaharia-lab/telemetry-collector"
+	"log/slog"
 	"os"
 )
 
@@ -37,6 +38,7 @@ func main() {
 	if cliContainer.ConfigFromFile.UsageTracking.Enabled {
 		telemetryEvent.SendTelemetryEvent(ctx, cliContainer.Config, "start", telemetry.SeverityInfo, "CLI starting", nil)
 	}
+	slogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	// setup commands
 	rootCmd := cmd.NewRootCmd(cliContainer)
@@ -45,7 +47,7 @@ func main() {
 		chat.NewChatCmd(cliContainer),
 		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
 		daemon.NewStartCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
-		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
+		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, slogger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		daemon.NewStatusCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 	)
 
