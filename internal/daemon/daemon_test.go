@@ -431,3 +431,86 @@ func TestHandleConnection_CommandExecTimeout(t *testing.T) {
 	clientConn.Close()
 	waitForWg(t, &wg, readWriteTimeout)
 }
+
+func TestHandleConnection_MaxConnections(t *testing.T) {
+	maxConns := 2
+	socketPath := tempSocketPath(t)
+	defer os.RemoveAll(socketPath)
+
+	d, _ := createTestDaemon(t, Config{
+		SocketPath:         socketPath,
+		MaxConnections:     maxConns,
+		CommandExecTimeout: 5 * time.Second,
+		ReadTimeout:        5 * time.Second,
+	})
+
+	d.RegisterCommand("WAIT", func(ctx context.Context, args []string) (string, error) {
+		<-ctx.Done()
+		return "Waited", ctx.Err()
+	})
+
+	err := d.Start()
+	if err != nil {
+		t.Fatalf("Daemon Start failed: %v", err)
+	}
+	defer d.Stop()
+
+	time.Sleep(50 * time.Millisecond)
+
+	establishedConns := make([]net.Conn, 0, maxConns)
+	defer func() {
+		for _, conn := range establishedConns {
+			conn.Close()
+		}
+	}()
+
+	for i := 0; i < maxConns; i++ {
+		conn, err := net.DialTimeout("unix", socketPath, 1*time.Second)
+		if err != nil {
+			t.Fatalf("Dial failed for connection %d: %v", i+1, err)
+		}
+		establishedConns = append(establishedConns, conn)
+
+		_, err = conn.Write([]byte("WAIT\n"))
+		if err != nil {
+			conn.Close()
+			t.Fatalf("Write WAIT command failed for connection %d: %v", i+1, err)
+		}
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	d.connMu.RLock()
+	currentCount := len(d.connections)
+	d.connMu.RUnlock()
+	if currentCount != maxConns {
+		t.Fatalf("Expected %d connections tracked by daemon, found %d", maxConns, currentCount)
+	} else {
+		t.Logf("Verified %d connections are tracked.", currentCount)
+	}
+
+	excessConn, err := net.DialTimeout("unix", socketPath, 1*time.Second)
+	if err != nil {
+		t.Fatalf("Dial failed for excess connection: %v", err)
+	}
+	defer excessConn.Close()
+
+	excessConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	buf := make([]byte, 1)
+	n, readErr := excessConn.Read(buf)
+
+	if readErr == nil {
+		t.Errorf("Expected error reading from rejected connection, but read %d bytes", n)
+	} else if !errors.Is(readErr, io.EOF) && !strings.Contains(readErr.Error(), "closed") && !strings.Contains(readErr.Error(), "reset by peer") && !strings.Contains(readErr.Error(), "broken pipe") {
+		t.Errorf("Expected EOF or closed/reset error reading from rejected connection, got: %v", readErr)
+	} else {
+		t.Logf("Received expected error from rejected connection: %v", readErr)
+	}
+
+	d.connMu.RLock()
+	finalCount := len(d.connections)
+	d.connMu.RUnlock()
+	if finalCount > maxConns {
+		t.Errorf("Daemon tracked more connections (%d) than the limit (%d)", finalCount, maxConns)
+	}
+}
