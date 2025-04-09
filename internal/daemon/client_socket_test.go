@@ -3,11 +3,15 @@ package daemon
 import (
 	"context"
 	"errors"
+	daemonMocks "github.com/shaharia-lab/echoy/internal/daemon/mocks"
 	"io"
 	"net"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 // MockConnection implements net.Conn for testing
@@ -30,6 +34,7 @@ func (m *MockConnection) Read(b []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 
+	// Copy data
 	n = copy(b, m.ReadData[m.readIndex:])
 	m.readIndex += n
 
@@ -51,45 +56,38 @@ func (m *MockConnection) SetDeadline(t time.Time) error      { m.DeadlineCalls++
 func (m *MockConnection) SetReadDeadline(t time.Time) error  { m.DeadlineCalls++; return nil }
 func (m *MockConnection) SetWriteDeadline(t time.Time) error { m.DeadlineCalls++; return nil }
 
-// MockConnectionProvider implements ConnectionProvider for testing
-/*type MockConnectionProvider struct {
-	Conn  net.Conn
-	Error error
-}
-
-func (m *MockConnectionProvider) Connect(ctx context.Context) (net.Conn, error) {
-	return m.Conn, m.Error
-}*/
-
 func TestDaemonClient_Execute(t *testing.T) {
 	tests := []struct {
-		name          string
-		mockConn      *MockConnection
-		providerError error
-		cmd           string
-		want          string
-		wantErr       bool
+		name      string
+		setupMock func(*daemonMocks.MockConnectionProvider, *MockConnection)
+		cmd       string
+		want      string
+		wantErr   bool
 	}{
 		{
 			name: "successful command",
-			mockConn: &MockConnection{
-				ReadData: "SUCCESS\n",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.ReadData = "SUCCESS\n"
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
 			want:    "SUCCESS",
 			wantErr: false,
 		},
 		{
-			name:          "connection error",
-			providerError: errors.New("connection refused"),
-			cmd:           "TEST",
-			want:          "",
-			wantErr:       true,
+			name: "connection error",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				provider.EXPECT().Connect(mock.Anything).Return(nil, errors.New("connection refused"))
+			},
+			cmd:     "TEST",
+			want:    "",
+			wantErr: true,
 		},
 		{
 			name: "write error",
-			mockConn: &MockConnection{
-				WriteError: errors.New("write error"),
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.WriteError = errors.New("write error")
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
 			want:    "",
@@ -97,8 +95,9 @@ func TestDaemonClient_Execute(t *testing.T) {
 		},
 		{
 			name: "read error",
-			mockConn: &MockConnection{
-				ReadError: errors.New("read error"),
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.ReadError = errors.New("read error")
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
 			want:    "",
@@ -108,33 +107,31 @@ func TestDaemonClient_Execute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			provider := &MockConnectionProvider{
-				Conn:  tt.mockConn,
-				Error: tt.providerError,
+			mockProvider := daemonMocks.NewMockConnectionProvider(t)
+			mockConn := &MockConnection{}
+
+			if tt.setupMock != nil {
+				tt.setupMock(mockProvider, mockConn)
 			}
 
 			client := &DaemonClient{
-				Provider: provider,
+				Provider: mockProvider,
 			}
 
 			got, err := client.Execute(context.Background(), tt.cmd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DaemonClient.Execute() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
-			if got != tt.want {
-				t.Errorf("DaemonClient.Execute() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 
-			// Check that command was written correctly if no errors
-			if tt.mockConn != nil && tt.providerError == nil && tt.mockConn.WriteError == nil {
+			if !tt.wantErr && mockConn.WriteData != nil {
 				expectedCmd := tt.cmd
 				if !strings.HasSuffix(expectedCmd, "\n") {
 					expectedCmd += "\n"
 				}
-				if string(tt.mockConn.WriteData) != expectedCmd {
-					t.Errorf("Command written = %v, want %v", string(tt.mockConn.WriteData), expectedCmd)
-				}
+				assert.Equal(t, expectedCmd, string(mockConn.WriteData))
 			}
 		})
 	}
@@ -142,54 +139,55 @@ func TestDaemonClient_Execute(t *testing.T) {
 
 func TestDaemonClient_IsRunning(t *testing.T) {
 	tests := []struct {
-		name          string
-		mockConn      *MockConnection
-		providerError error
-		wantRunning   bool
-		wantStatus    string
+		name        string
+		setupMock   func(*daemonMocks.MockConnectionProvider, *MockConnection)
+		wantRunning bool
+		wantStatus  string
 	}{
 		{
 			name: "daemon running",
-			mockConn: &MockConnection{
-				ReadData: "PONG\n",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.ReadData = "PONG\n"
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			wantRunning: true,
 			wantStatus:  "running",
 		},
 		{
 			name: "unexpected response",
-			mockConn: &MockConnection{
-				ReadData: "ERROR\n",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.ReadData = "ERROR\n"
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			wantRunning: false,
 			wantStatus:  "unexpected response: ERROR",
 		},
 		{
-			name:          "connection error",
-			providerError: errors.New("connection refused"),
-			wantRunning:   false,
-			wantStatus:    "not running: failed to connect to daemon: connection refused",
+			name: "connection error",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				provider.EXPECT().Connect(mock.Anything).Return(nil, errors.New("connection refused"))
+			},
+			wantRunning: false,
+			wantStatus:  "not running: failed to connect to daemon: connection refused",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			provider := &MockConnectionProvider{
-				Conn:  tt.mockConn,
-				Error: tt.providerError,
+			mockProvider := daemonMocks.NewMockConnectionProvider(t)
+			mockConn := &MockConnection{}
+
+			if tt.setupMock != nil {
+				tt.setupMock(mockProvider, mockConn)
 			}
 
 			client := &DaemonClient{
-				Provider: provider,
+				Provider: mockProvider,
 			}
 
 			gotRunning, gotStatus := client.IsRunning(context.Background())
-			if gotRunning != tt.wantRunning {
-				t.Errorf("DaemonClient.IsRunning() running = %v, want %v", gotRunning, tt.wantRunning)
-			}
-			if gotStatus != tt.wantStatus {
-				t.Errorf("DaemonClient.IsRunning() status = %v, want %v", gotStatus, tt.wantStatus)
-			}
+			assert.Equal(t, tt.wantRunning, gotRunning)
+			assert.Equal(t, tt.wantStatus, gotStatus)
 		})
 	}
 }
