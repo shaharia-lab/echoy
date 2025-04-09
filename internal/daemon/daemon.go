@@ -99,12 +99,8 @@ func (d *Daemon) Start() error {
 	default:
 	}
 
-	oldMask := syscall.Umask(0o002)
-	d.logger.Debug("Set umask", "new_mask", fmt.Sprintf("%04o", 0o002), "old_mask", fmt.Sprintf("%04o", oldMask))
-	defer func() {
-		syscall.Umask(oldMask)
-		d.logger.Debug("Restored umask", "old_mask", fmt.Sprintf("%04o", oldMask))
-	}()
+	// Use platform-specific umask setting
+	defer setSocketUmask(d)()
 
 	if err := os.RemoveAll(d.config.SocketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		d.logger.Error("Failed to remove existing socket file", "path", d.config.SocketPath, "error", err)
