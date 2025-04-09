@@ -36,6 +36,10 @@ type WebServer struct {
 	frontendDownloader webui.FrontendDownloader
 }
 
+func (ws *WebServer) Name() string {
+	return "webserver"
+}
+
 // NewWebServer creates a new WebServer instance with the specified API port
 func NewWebServer(
 	apiPort string,
@@ -66,11 +70,6 @@ func NewWebServer(
 		chatHandler:        chatHandler,
 		frontendDownloader: frontendDownloader,
 	}
-}
-
-// Router returns the chi router to allow adding routes from outside
-func (ws *WebServer) Router() *chi.Mux {
-	return ws.router
 }
 
 // setupRoutes configures the default routes
