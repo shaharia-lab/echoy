@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog" // Use slog directly or via your wrapper
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -13,11 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/shaharia-lab/telemetry-collector"
+	"github.com/spf13/cobra"
+
 	"github.com/shaharia-lab/echoy/internal/config"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
-	"github.com/shaharia-lab/telemetry-collector"
-	"github.com/spf13/cobra"
 )
 
 // NewStartCmd creates a command to run the daemon
@@ -166,7 +167,6 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 	return cmd
 }
 
-// isDaemonRunning checks if the daemon is running by pinging its socket.
 func isDaemonRunning(socketPath string, logger *slog.Logger) (bool, error) {
 	logger.Debug("Checking if daemon is running", "socket", socketPath)
 	conn, err := net.DialTimeout("unix", socketPath, 1*time.Second)
