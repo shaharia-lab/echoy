@@ -514,3 +514,62 @@ func TestHandleConnection_MaxConnections(t *testing.T) {
 		t.Errorf("Daemon tracked more connections (%d) than the limit (%d)", finalCount, maxConns)
 	}
 }
+
+func TestHandleConnection_ReadTimeoutOnLongLine(t *testing.T) {
+	t.Parallel()
+
+	readTimeout := 100 * time.Millisecond
+	writeTimeout := readTimeout * 2
+
+	var logBuf bytes.Buffer
+	testLogger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	d, _ := createTestDaemon(t, Config{
+		WriteTimeout: writeTimeout,
+		ReadTimeout:  readTimeout,
+		Logger:       testLogger,
+	})
+
+	d.RegisterCommand("DUMMY", func(ctx context.Context, args []string) (string, error) {
+		return "Should not be reached", nil
+	})
+
+	serverConn, clientConn := net.Pipe()
+	defer clientConn.Close()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		d.handleConnection(serverConn)
+	}()
+
+	longCommand := strings.Repeat("A", defaultReaderSize+1)
+
+	_, err := clientConn.Write([]byte(longCommand))
+	if err != nil {
+		clientConn.Close()
+		t.Fatalf("Client write long command failed: %v", err)
+	}
+
+	waitForWg(t, &wg, readTimeout*3)
+
+	responseBytes := make([]byte, 128)
+	n, err := clientConn.Read(responseBytes)
+
+	if n != 0 || !errors.Is(err, io.EOF) {
+		if err != nil && (errors.Is(err, net.ErrClosed) || strings.Contains(err.Error(), "closed pipe")) {
+			t.Logf("Received expected pipe closed error: %v", err)
+		} else {
+			t.Errorf("Expected n=0 and EOF/closed error reading from client, got n=%d, err=%v", n, err)
+		}
+	} else {
+		t.Logf("Received expected EOF")
+	}
+
+	logOutput := logBuf.String()
+	expectedLogMsg := "Client connection read timeout"
+	if !strings.Contains(logOutput, expectedLogMsg) {
+		t.Errorf("Expected log message %q not found in logs:\n%s", expectedLogMsg, logOutput)
+	}
+}

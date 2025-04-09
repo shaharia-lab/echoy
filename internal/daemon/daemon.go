@@ -350,7 +350,9 @@ func (d *Daemon) handleConnection(conn net.Conn) {
 			}
 			if errors.Is(err, bufio.ErrBufferFull) {
 				d.logger.Error("Command line exceeded buffer size", "remote_addr", remoteAddr, "limit", defaultReaderSize)
-				_ = d.writeResponse(conn, "ERROR: Command too long.\n", remoteAddr)
+				if writeErr := d.writeResponse(conn, "ERROR: Command too long.\n", remoteAddr); writeErr != nil {
+					d.logger.Warn("Failed to write 'Command too long' error to client", "remote_addr", remoteAddr, "error", writeErr)
+				}
 				return
 			}
 
