@@ -674,3 +674,106 @@ func TestStartStop_Lifecycle(t *testing.T) {
 	}
 	d3.Stop()
 }
+
+func TestStop_ClosesConnections(t *testing.T) {
+	socketPath := tempSocketPath(t)
+	t.Cleanup(func() { os.RemoveAll(socketPath) })
+
+	d, _ := createTestDaemon(t, Config{
+		SocketPath:         socketPath,
+		ReadTimeout:        1 * time.Second,
+		WriteTimeout:       1 * time.Second,
+		CommandExecTimeout: 5 * time.Second,
+		ShutdownTimeout:    2 * time.Second,
+	})
+
+	waitHandlerStarted := make(chan struct{}, 2)
+
+	d.RegisterCommand("WAIT", func(ctx context.Context, args []string) (string, error) {
+		select {
+		case waitHandlerStarted <- struct{}{}:
+		default:
+		}
+		<-ctx.Done()
+		return "Waited", ctx.Err()
+	})
+
+	err := d.Start()
+	if err != nil {
+		t.Fatalf("Daemon Start failed: %v", err)
+	}
+	defer d.Stop()
+
+	time.Sleep(50 * time.Millisecond)
+
+	numConns := 2
+	clientConns := make([]net.Conn, 0, numConns)
+	defer func() {
+		for _, conn := range clientConns {
+			conn.Close()
+		}
+	}()
+
+	for i := 0; i < numConns; i++ {
+		conn, err := net.DialTimeout("unix", socketPath, 1*time.Second)
+		if err != nil {
+			for _, c := range clientConns {
+				c.Close()
+			}
+			t.Fatalf("Dial failed for connection %d: %v", i+1, err)
+		}
+		clientConns = append(clientConns, conn)
+
+		_, err = conn.Write([]byte("WAIT\n"))
+		if err != nil {
+			t.Logf("Write WAIT command failed for conn %d: %v (proceeding anyway)", i+1, err)
+		}
+	}
+
+	handlersConfirmed := 0
+	confirmTimeout := time.After(1 * time.Second)
+	for handlersConfirmed < numConns {
+		select {
+		case <-waitHandlerStarted:
+			handlersConfirmed++
+		case <-confirmTimeout:
+			t.Fatalf("Timed out waiting for WAIT handlers to start (confirmed %d/%d)", handlersConfirmed, numConns)
+		}
+	}
+	t.Logf("Confirmed %d WAIT handlers started", handlersConfirmed)
+
+	d.connMu.RLock()
+	trackedCount := len(d.connections)
+	d.connMu.RUnlock()
+	if trackedCount != numConns {
+		t.Errorf("Expected %d connections to be tracked before Stop, found %d", numConns, trackedCount)
+	}
+
+	d.Stop()
+
+	readTimeout := 500 * time.Millisecond
+	readBuf := make([]byte, 1)
+	for i, conn := range clientConns {
+		err = conn.SetReadDeadline(time.Now().Add(readTimeout))
+		if err != nil {
+			t.Logf("Ignoring SetReadDeadline error on potentially closed conn %d: %v", i+1, err)
+		}
+
+		n, readErr := conn.Read(readBuf)
+
+		if readErr == nil {
+			t.Errorf("Read from client connection %d succeeded unexpectedly after Stop() (read %d bytes)", i+1, n)
+		} else if !errors.Is(readErr, io.EOF) && !errors.Is(readErr, net.ErrClosed) && !strings.Contains(readErr.Error(), "closed") && !strings.Contains(readErr.Error(), "reset by peer") && !strings.Contains(readErr.Error(), "broken pipe") {
+			t.Errorf("Read from client connection %d after Stop() returned unexpected error: %v", i+1, readErr)
+		} else {
+			t.Logf("Read from client connection %d after Stop() correctly returned expected error: %v", i+1, readErr)
+		}
+	}
+
+	d.connMu.RLock()
+	finalTrackedCount := len(d.connections)
+	d.connMu.RUnlock()
+	if finalTrackedCount != 0 {
+		t.Errorf("Expected 0 connections tracked after Stop completed, found %d", finalTrackedCount)
+	}
+}
