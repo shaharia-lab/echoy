@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/types"
 	"sort"
 	"strings"
 )
@@ -18,7 +19,7 @@ func DefaultPingHandler(ctx context.Context, args []string) (string, error) {
 }
 
 // MakeDefaultStatusHandler creates a status handler closure capturing the daemon instance.
-func MakeDefaultStatusHandler(d *Daemon) CommandFunc {
+func MakeDefaultStatusHandler(d *Daemon) types.CommandFunc {
 	return func(ctx context.Context, args []string) (string, error) {
 		d.connMu.RLock()
 		connCount := len(d.connections)
@@ -51,7 +52,7 @@ func MakeDefaultStatusHandler(d *Daemon) CommandFunc {
 }
 
 // MakeDefaultStopHandler creates a stop handler closure capturing the daemon instance.
-func MakeDefaultStopHandler(d *Daemon) CommandFunc {
+func MakeDefaultStopHandler(d *Daemon) types.CommandFunc {
 	return func(ctx context.Context, args []string) (string, error) {
 		d.logger.Info("STOP command received via connection, triggering daemon shutdown.")
 		go d.Stop()

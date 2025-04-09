@@ -8,6 +8,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
+	"github.com/shaharia-lab/echoy/internal/types"
 	"github.com/shaharia-lab/echoy/internal/webui"
 	"log"
 	"net/http"
@@ -176,4 +177,24 @@ func (ws *WebServer) Stop(ctx context.Context) error {
 	ws.server = nil
 
 	return err
+}
+
+// StartHandler returns a CommandFunc that starts the web server
+func (ws *WebServer) StartHandler() types.CommandFunc {
+	return func(ctx context.Context, args []string) (string, error) {
+		if err := ws.Start(); err != nil {
+			return "", fmt.Errorf("failed to start web server: %w", err)
+		}
+		return fmt.Sprintf("Web server started successfully on port %s", ws.APIPort), nil
+	}
+}
+
+// StopHandler returns a CommandFunc that stops the web server
+func (ws *WebServer) StopHandler() types.CommandFunc {
+	return func(ctx context.Context, args []string) (string, error) {
+		if err := ws.Stop(ctx); err != nil {
+			return "", fmt.Errorf("failed to stop web server: %w", err)
+		}
+		return "Web server stopped successfully", nil
+	}
 }

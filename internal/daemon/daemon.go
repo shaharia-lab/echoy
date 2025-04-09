@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/types"
 	"io"
 	"log/slog"
 	"net"
@@ -14,11 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unicode" // For sanitizing example
+	"unicode"
 )
-
-// CommandFunc defines the function signature for command handlers.
-type CommandFunc func(ctx context.Context, args []string) (response string, err error)
 
 // Config holds the configuration for the daemon
 type Config struct {
@@ -40,7 +38,7 @@ type Daemon struct {
 	wg          sync.WaitGroup
 	connections map[net.Conn]struct{}
 	connMu      sync.RWMutex
-	commands    map[string]CommandFunc
+	commands    map[string]types.CommandFunc
 	cmdMu       sync.RWMutex
 	logger      *slog.Logger
 }
@@ -72,7 +70,7 @@ func NewDaemon(cfg Config) *Daemon {
 		config:      cfg,
 		stopChan:    make(chan struct{}),
 		connections: make(map[net.Conn]struct{}),
-		commands:    make(map[string]CommandFunc),
+		commands:    make(map[string]types.CommandFunc),
 		logger:      cfg.Logger,
 	}
 
@@ -80,7 +78,7 @@ func NewDaemon(cfg Config) *Daemon {
 }
 
 // RegisterCommand adds or replaces a command handler. Not safe for concurrent use after Start().
-func (d *Daemon) RegisterCommand(name string, handler CommandFunc) {
+func (d *Daemon) RegisterCommand(name string, handler types.CommandFunc) {
 	d.cmdMu.Lock()
 	defer d.cmdMu.Unlock()
 	upperName := strings.ToUpper(name)
