@@ -573,3 +573,104 @@ func TestHandleConnection_ReadTimeoutOnLongLine(t *testing.T) {
 		t.Errorf("Expected log message %q not found in logs:\n%s", expectedLogMsg, logOutput)
 	}
 }
+
+func fileExists(path string) (bool, os.FileMode, error) {
+	info, err := os.Stat(path)
+	if err == nil {
+		return true, info.Mode(), nil
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false, 0, nil
+	}
+	return false, 0, err
+}
+
+func TestStartStop_Lifecycle(t *testing.T) {
+	socketPath := tempSocketPath(t)
+	t.Cleanup(func() { os.RemoveAll(socketPath) })
+	d, _ := createTestDaemon(t, Config{SocketPath: socketPath})
+
+	exists, _, err := fileExists(socketPath)
+	if err != nil {
+		t.Fatalf("Initial stat failed for %q: %v", socketPath, err)
+	}
+	if exists {
+		t.Fatalf("Socket file %q unexpectedly exists before Start()", socketPath)
+	}
+
+	err = d.Start()
+	if err != nil {
+		t.Fatalf("d.Start() failed: %v", err)
+	}
+
+	exists, mode, err := fileExists(socketPath)
+	if err != nil {
+		t.Fatalf("Stat failed for %q after Start(): %v", socketPath, err)
+	}
+	if !exists {
+		t.Fatalf("Socket file %q does not exist after Start()", socketPath)
+	}
+
+	if mode&os.ModeSocket == 0 {
+		t.Errorf("File %q is not a socket, mode: %v", socketPath, mode)
+	}
+
+	expectedPerms := os.FileMode(0660)
+	if mode.Perm() != expectedPerms {
+		t.Errorf("Socket %q has incorrect permissions: expected %v (%04o), got %v (%04o)",
+			socketPath, expectedPerms, expectedPerms, mode.Perm(), mode.Perm())
+	}
+
+	d.Stop()
+
+	time.Sleep(50 * time.Millisecond)
+	exists, _, err = fileExists(socketPath)
+	if err != nil {
+		t.Fatalf("Stat failed for %q after Stop(): %v", socketPath, err)
+	}
+	if exists {
+		t.Fatalf("Socket file %q still exists after Stop()", socketPath)
+	}
+
+	stopCalledAgain := false
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("Second call to Stop() panicked: %v", r)
+			}
+		}()
+		d.Stop()
+		stopCalledAgain = true
+	}()
+	if !stopCalledAgain {
+		t.Error("Test logic error, second Stop() call did not complete")
+	}
+
+	d2, _ := createTestDaemon(t, Config{SocketPath: tempSocketPath(t)}) // Use different path
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("Stop() before Start() panicked: %v", r)
+			}
+		}()
+		d2.Stop()
+	}()
+
+	socketPath3 := tempSocketPath(t)
+	t.Cleanup(func() { os.RemoveAll(socketPath3) })
+	err = os.WriteFile(socketPath3, []byte("dummy"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create dummy socket file: %v", err)
+	}
+	d3, _ := createTestDaemon(t, Config{SocketPath: socketPath3})
+	err = d3.Start()
+	if err != nil {
+		t.Fatalf("d3.Start() failed when socket path had existing file: %v", err)
+	}
+
+	exists, mode, err = fileExists(socketPath3)
+	if !exists || err != nil || mode&os.ModeSocket == 0 || mode.Perm() != expectedPerms {
+		t.Errorf("d3.Start() did not correctly replace existing file with socket: exists=%v, mode=%v, err=%v", exists, mode, err)
+	}
+	d3.Stop()
+}
