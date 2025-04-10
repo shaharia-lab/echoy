@@ -2,9 +2,8 @@ package daemon
 
 import (
 	"context"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/types"
-	"io"
-	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -103,7 +102,7 @@ func TestMakeDefaultStatusHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := Config{
-				Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+				Logger: logger.NewNoopLogger(),
 			}
 			if tt.configModifier != nil {
 				tt.configModifier(&cfg)
@@ -139,7 +138,7 @@ func TestMakeDefaultStatusHandler(t *testing.T) {
 func TestMakeDefaultStopHandler(t *testing.T) {
 	t.Run("Stop command", func(t *testing.T) {
 		d, _ := createTestDaemon(t, Config{
-			Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+			Logger: logger.NewNoopLogger(),
 		})
 
 		stopCalled := make(chan struct{})

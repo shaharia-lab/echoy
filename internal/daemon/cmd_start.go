@@ -43,6 +43,17 @@ func NewStartCmd(container *cli.Container, appConf config.Config, appConfig *con
 				)
 			}
 
+			daemonLog, err := loggerInt.NewZapLogger(loggerInt.Config{
+				LogLevel:    loggerInt.DebugLevel,
+				LogFilePath: fmt.Sprintf("%s/daemon.log", container.Paths[filesystem.LogsDirectory]),
+				MaxSizeMB:   50,
+				MaxAgeDays:  14,
+				MaxBackups:  5,
+			})
+			if err != nil {
+				panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+			}
+
 			if !foreground {
 				container.Logger.WithFields(map[string]interface{}{
 					"socket":  socketPath,
@@ -127,30 +138,7 @@ func NewStartCmd(container *cli.Container, appConf config.Config, appConfig *con
 				"command": "start",
 			}).Info("Starting daemon in foreground mode...")
 
-			serverLogger, err := loggerInt.NewZapLogger(loggerInt.Config{
-				LogLevel:    loggerInt.DebugLevel,
-				UseConsole:  true,
-				Development: true,
-
-				LogFilePath: fmt.Sprintf("%s/webserver.log", container.Paths[filesystem.LogsDirectory]),
-
-				MaxSizeMB:  50,
-				MaxAgeDays: 14,
-				MaxBackups: 5,
-			})
-			if err != nil {
-				container.Logger.WithFields(map[string]interface{}{
-					loggerInt.ErrorKey: err,
-					"command":          "start",
-					"socket":           socketPath,
-				}).Error("Failed to initialize webserver logger")
-
-				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to initialize webserver logger: %v", err))
-				return fmt.Errorf("failed to initialize webserver logger: %w", err)
-			}
-			defer serverLogger.Flush()
-
-			webSrvr, err := webserver.BuildWebserver(appConf, themeManager, webUIStaticDirectory, serverLogger)
+			webSrvr, err := webserver.BuildWebserver(appConf, themeManager, webUIStaticDirectory, container.Paths[filesystem.LogsDirectory])
 			if err != nil {
 				container.Logger.WithFields(map[string]interface{}{
 					loggerInt.ErrorKey: err,
@@ -164,7 +152,7 @@ func NewStartCmd(container *cli.Container, appConf config.Config, appConfig *con
 
 			daemonCfg := Config{
 				SocketPath:         socketPath,
-				Logger:             sLogger,
+				Logger:             daemonLog,
 				ShutdownTimeout:    30 * time.Second,
 				ReadTimeout:        10 * time.Second,
 				WriteTimeout:       10 * time.Second,
@@ -172,7 +160,7 @@ func NewStartCmd(container *cli.Container, appConf config.Config, appConfig *con
 				MaxConnections:     100,
 			}
 
-			daemonInstance := NewDaemon(daemonCfg)
+			daemonInstance := NewDaemon(daemonCfg, daemonLog)
 
 			daemonInstance.RegisterCommand("PING", DefaultPingHandler)
 			daemonInstance.RegisterCommand("STATUS", MakeDefaultStatusHandler(daemonInstance))

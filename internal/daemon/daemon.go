@@ -5,9 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/types"
 	"io"
-	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -25,7 +25,7 @@ type Config struct {
 	ReadTimeout        time.Duration
 	WriteTimeout       time.Duration
 	CommandExecTimeout time.Duration
-	Logger             *slog.Logger
+	Logger             logger.Logger
 	MaxConnections     int
 }
 
@@ -40,16 +40,14 @@ type Daemon struct {
 	connMu      sync.RWMutex
 	commands    map[string]types.CommandFunc
 	cmdMu       sync.RWMutex
-	logger      *slog.Logger
+	logger      logger.Logger
 }
 
 const defaultReaderSize = 4096
 
 // NewDaemon creates a new Daemon instance with the provided configuration
-func NewDaemon(cfg Config) *Daemon {
-	if cfg.Logger == nil {
-		cfg.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	}
+func NewDaemon(cfg Config, logger logger.Logger) *Daemon {
+	cfg.Logger = logger
 	if cfg.ShutdownTimeout == 0 {
 		cfg.ShutdownTimeout = 30 * time.Second
 	}
@@ -422,24 +420,30 @@ func (d *Daemon) writeResponse(conn net.Conn, response string, remoteAddr string
 
 	n, writeErr := conn.Write([]byte(response))
 
-	logArgs := []any{"remote_addr", remoteAddr, "response_len", len(response), "bytes_written", n}
+	logFields := map[string]interface{}{
+		"remote_addr":   remoteAddr,
+		"response_len":  len(response),
+		"bytes_written": n,
+	}
 	if writeErr != nil {
 		if netErr, ok := writeErr.(net.Error); ok && netErr.Timeout() {
-			d.logger.Error("Timeout writing response to client", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Error("Timeout writing response to client")
 		} else if errors.Is(writeErr, net.ErrClosed) || strings.Contains(writeErr.Error(), "use of closed network connection") {
-			d.logger.Warn("Failed to write response, connection closed", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Warn("Failed to write response, connection closed")
 		} else {
-			d.logger.Error("Error writing response to client", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Error("Error writing response to client")
 		}
 		return writeErr
 	}
 
 	if n < len(response) {
-		d.logger.Warn("Partial write occurred", logArgs...)
+		d.logger.WithFields(logFields).Warn("Partial write to client")
+
 		return io.ErrShortWrite
 	}
 
-	d.logger.Debug("Successfully wrote response", logArgs...)
+	d.logger.WithFields(logFields).Debug("Successfully wrote response")
+
 	return nil
 }
 
