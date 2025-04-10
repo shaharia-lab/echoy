@@ -61,16 +61,29 @@ func TestDaemonClient_Execute(t *testing.T) {
 		name      string
 		setupMock func(*daemonMocks.MockConnectionProvider, *MockConnection)
 		cmd       string
+		args      []string
 		want      string
 		wantErr   bool
 	}{
 		{
-			name: "successful command",
+			name: "successful command without args",
 			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
 				conn.ReadData = "SUCCESS\n"
 				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
+			args:    nil,
+			want:    "SUCCESS",
+			wantErr: false,
+		},
+		{
+			name: "successful command with args",
+			setupMock: func(provider *daemonMocks.MockConnectionProvider, conn *MockConnection) {
+				conn.ReadData = "SUCCESS\n"
+				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
+			},
+			cmd:     "TEST",
+			args:    []string{"arg1", "arg2", "arg3"},
 			want:    "SUCCESS",
 			wantErr: false,
 		},
@@ -80,6 +93,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				provider.EXPECT().Connect(mock.Anything).Return(nil, errors.New("connection refused"))
 			},
 			cmd:     "TEST",
+			args:    nil,
 			want:    "",
 			wantErr: true,
 		},
@@ -90,6 +104,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
+			args:    nil,
 			want:    "",
 			wantErr: true,
 		},
@@ -100,6 +115,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				provider.EXPECT().Connect(mock.Anything).Return(conn, nil)
 			},
 			cmd:     "TEST",
+			args:    nil,
 			want:    "",
 			wantErr: true,
 		},
@@ -118,7 +134,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				Provider: mockProvider,
 			}
 
-			got, err := client.Execute(context.Background(), tt.cmd, nil)
+			got, err := client.Execute(context.Background(), tt.cmd, tt.args)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -128,6 +144,11 @@ func TestDaemonClient_Execute(t *testing.T) {
 
 			if !tt.wantErr && mockConn.WriteData != nil {
 				expectedCmd := tt.cmd
+				if tt.args != nil && len(tt.args) > 0 {
+					for _, arg := range tt.args {
+						expectedCmd += " " + arg
+					}
+				}
 				if !strings.HasSuffix(expectedCmd, "\n") {
 					expectedCmd += "\n"
 				}
