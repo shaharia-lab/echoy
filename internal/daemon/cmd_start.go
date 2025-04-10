@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/webserver"
 	"log/slog"
 	"net"
 	"os"
@@ -17,14 +18,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/shaharia-lab/echoy/internal/config"
+	loggerInt "github.com/shaharia-lab/echoy/internal/logger"
 	telemetryEvent "github.com/shaharia-lab/echoy/internal/telemetry"
 	"github.com/shaharia-lab/echoy/internal/theme"
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManager *theme.Manager, socketPath string) *cobra.Command {
+func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *loggerInt.Logger, sLogger *slog.Logger) *cobra.Command {
 	var foreground bool
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	cmd := &cobra.Command{
 		Use:   "start",
@@ -39,17 +40,17 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 			}
 
 			if !foreground {
-				logger.Info("Attempting to start daemon in background...")
-				if isRunning, _ := isDaemonRunning(socketPath, logger); isRunning {
+				sLogger.Info("Attempting to start daemon in background...")
+				if isRunning, _ := isDaemonRunning(socketPath, sLogger); isRunning {
 					msg := "Daemon is already running"
-					logger.Info(msg)
+					sLogger.Info(msg)
 					themeManager.GetCurrentTheme().Info().Println(msg)
 					return nil
 				}
 
 				execPath, err := os.Executable()
 				if err != nil {
-					logger.Error("Failed to get executable path", "error", err)
+					sLogger.Error("Failed to get executable path", "error", err)
 					return fmt.Errorf("failed to get executable path: %w", err)
 				}
 
@@ -60,7 +61,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 				setPlatformProcAttr(daemonCmd)
 
 				if err := daemonCmd.Start(); err != nil {
-					logger.Error("Failed to start daemon process in background", "error", err)
+					sLogger.Error("Failed to start daemon process in background", "error", err)
 					themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon process: %v", err))
 					return fmt.Errorf("failed to start daemon process: %w", err)
 				}
@@ -77,16 +78,23 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 					pid = daemonCmd.Process.Pid
 				}
 				successMsg := fmt.Sprintf("Daemon starting in background mode (PID: %d). Listening on %s", pid, socketPath)
-				logger.Info(successMsg)
+				sLogger.Info(successMsg)
 				themeManager.GetCurrentTheme().Success().Println(successMsg)
 				return nil
 			}
 
-			logger.Info("Starting daemon in foreground mode...")
+			sLogger.Info("Starting daemon in foreground mode...")
+
+			webSrvr, err := webserver.BuildWebserver(appConf, themeManager, webUIStaticDirectory, l)
+			if err != nil {
+				sLogger.Error("Failed to build web server", "error", err)
+				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to build web server: %v", err))
+				return fmt.Errorf("failed to build web server: %w", err)
+			}
 
 			daemonCfg := Config{
 				SocketPath:         socketPath,
-				Logger:             logger,
+				Logger:             sLogger,
 				ShutdownTimeout:    30 * time.Second,
 				ReadTimeout:        10 * time.Second,
 				WriteTimeout:       10 * time.Second,
@@ -99,6 +107,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 			daemonInstance.RegisterCommand("PING", DefaultPingHandler)
 			daemonInstance.RegisterCommand("STATUS", MakeDefaultStatusHandler(daemonInstance))
 			daemonInstance.RegisterCommand("STOP", MakeDefaultStopHandler(daemonInstance))
+			daemonInstance.RegisterCommand("WEBSERVER", webSrvr.DaemonCommandHandler())
 
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
@@ -110,7 +119,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 				defer close(daemonStopped)
 				err := daemonInstance.Start()
 				if err != nil {
-					logger.Error("Daemon failed to start", "error", err)
+					sLogger.Error("Daemon failed to start", "error", err)
 					select {
 					case errChan <- err:
 					default:
@@ -124,7 +133,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to start daemon: %v", err))
 				return err
 			case <-time.After(200 * time.Millisecond):
-				logger.Info("Daemon successfully started and listening", "socket", daemonCfg.SocketPath)
+				sLogger.Info("Daemon successfully started and listening", "socket", daemonCfg.SocketPath)
 				themeManager.GetCurrentTheme().Success().Printf("Daemon started and listening on %s\n", daemonCfg.SocketPath)
 				if appConf.UsageTracking.Enabled {
 					telemetryEvent.SendTelemetryEvent(
@@ -133,7 +142,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 					)
 				}
 			case <-ctx.Done():
-				logger.Info("Daemon startup interrupted by signal before confirmation")
+				sLogger.Info("Daemon startup interrupted by signal before confirmation")
 				select {
 				case err := <-errChan:
 					return fmt.Errorf("daemon startup interrupted: %w", err)
@@ -144,13 +153,13 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 
 			<-ctx.Done()
 
-			logger.Info("Shutdown signal received or start failed, stopping daemon...")
+			sLogger.Info("Shutdown signal received or start failed, stopping daemon...")
 			themeManager.GetCurrentTheme().Info().Println("Shutting down daemon...")
 
 			daemonInstance.Stop()
 
 			<-daemonStopped
-			logger.Info("Daemon stopped gracefully.")
+			sLogger.Info("Daemon stopped gracefully.")
 			themeManager.GetCurrentTheme().Success().Println("Daemon stopped.")
 
 			select {

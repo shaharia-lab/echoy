@@ -127,7 +127,7 @@ func (c *Client) Execute(ctx context.Context, cmd string, args []string) (string
 func (c *Client) IsRunning(ctx context.Context) (bool, string) {
 	response, err := c.Execute(ctx, "PING", nil)
 	if err != nil {
-		return false, "not running: " + err.Error()
+		return false, err.Error()
 	}
 
 	if strings.TrimSpace(response) == "PONG" {
