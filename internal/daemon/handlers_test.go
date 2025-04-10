@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"github.com/shaharia-lab/echoy/internal/types"
 	"io"
 	"log/slog"
 	"strings"
@@ -53,7 +54,7 @@ func TestMakeDefaultStatusHandler(t *testing.T) {
 		name           string
 		ctx            context.Context
 		configModifier func(*Config)
-		setupCommands  map[string]CommandFunc
+		setupCommands  map[string]types.CommandFunc
 		expectContains []string
 		expectError    bool
 	}{
@@ -77,7 +78,7 @@ func TestMakeDefaultStatusHandler(t *testing.T) {
 			configModifier: func(cfg *Config) {
 				cfg.MaxConnections = 200
 			},
-			setupCommands: map[string]CommandFunc{
+			setupCommands: map[string]types.CommandFunc{
 				"TEST1": func(ctx context.Context, args []string) (string, error) { return "", nil },
 				"TEST2": func(ctx context.Context, args []string) (string, error) { return "", nil },
 			},
