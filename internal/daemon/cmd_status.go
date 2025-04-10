@@ -55,7 +55,7 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 				w.Flush()
 				themeManager.GetCurrentTheme().Success().Println("\nDaemon is running correctly")
 			} else {
-				fmt.Fprintln(w, fmt.Sprintf("daemon\t%s\t-", status))
+				fmt.Fprintln(w, fmt.Sprintf("daemon\t%s\t%s", "not running", status))
 				w.Flush()
 				themeManager.GetCurrentTheme().Warning().Println("\nDaemon is not running. Start it with 'echoy daemon start'")
 			}

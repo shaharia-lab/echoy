@@ -189,7 +189,7 @@ func TestDaemonClient_IsRunning(t *testing.T) {
 				provider.EXPECT().Connect(mock.Anything).Return(nil, errors.New("connection refused"))
 			},
 			wantRunning: false,
-			wantStatus:  "not running: failed to connect to daemon: connection refused",
+			wantStatus:  "failed to connect to daemon: connection refused",
 		},
 	}
 
