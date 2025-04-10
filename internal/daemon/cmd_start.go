@@ -26,7 +26,6 @@ import (
 // NewStartCmd creates a command to run the daemon
 func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *loggerInt.Logger, sLogger *slog.Logger) *cobra.Command {
 	var foreground bool
-	//sLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	cmd := &cobra.Command{
 		Use:   "start",
