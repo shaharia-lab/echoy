@@ -50,6 +50,7 @@ func main() {
 		daemon.NewStartCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr, cliContainer.SocketFilePath, cliContainer.Paths[filesystem.CacheWebuiBuild], cliContainer.Logger, slogger),
 		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, slogger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		daemon.NewStatusCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
+		cmd.NewWebserverCmd(cliContainer.SocketFilePath, cliContainer.ThemeMgr, slogger),
 	)
 
 	// execute the command
