@@ -1,10 +1,13 @@
 package logger
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -20,6 +23,61 @@ type Config struct {
 	MaxAgeDays  int
 	UseConsole  bool
 	Development bool
+}
+
+// zapLogWriter implements io.Writer by sending all written data to the logger
+type zapLogWriter struct {
+	logger *ZapLogger
+	level  Level
+	prefix string
+	buffer bytes.Buffer
+}
+
+// Write implements io.Writer interface
+func (w *zapLogWriter) Write(p []byte) (n int, err error) {
+	n, err = w.buffer.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	// Process each line separately
+	for {
+		line, err := w.buffer.ReadString('\n')
+		if err == io.EOF {
+			// Put the incomplete line back into the buffer
+			w.buffer.WriteString(line)
+			break
+		}
+		if err != nil {
+			return n, err
+		}
+
+		// Remove trailing newline and any carriage returns
+		line = strings.TrimRight(line, "\r\n")
+		if line == "" {
+			continue
+		}
+
+		// Log the line with appropriate prefix
+		logLine := w.prefix + line
+		switch w.level {
+		case DebugLevel:
+			w.logger.Debug(logLine)
+		case InfoLevel:
+			w.logger.Info(logLine)
+		case WarnLevel:
+			w.logger.Warn(logLine)
+		case ErrorLevel:
+			w.logger.Error(logLine)
+		case FatalLevel:
+			// Avoid calling Fatal as it would terminate the program
+			w.logger.Error("FATAL: " + logLine)
+		default:
+			w.logger.Info(logLine)
+		}
+	}
+
+	return n, nil
 }
 
 // ZapLogger provides a concrete implementation of the Logger using zap.
@@ -245,4 +303,22 @@ func (l *ZapLogger) Fatalf(format string, args ...interface{}) {
 // Flush flushes any buffered log entries
 func (l *ZapLogger) Flush() error {
 	return l.zap.Sync()
+}
+
+// StdoutWriter returns an io.Writer that sends all written data to the logger at INFO level
+func (l *ZapLogger) StdoutWriter() io.Writer {
+	return &zapLogWriter{
+		logger: l,
+		level:  InfoLevel,
+		prefix: "[stdout] ",
+	}
+}
+
+// StderrWriter returns an io.Writer that sends all written data to the logger at ERROR level
+func (l *ZapLogger) StderrWriter() io.Writer {
+	return &zapLogWriter{
+		logger: l,
+		level:  ErrorLevel,
+		prefix: "[stderr] ",
+	}
 }

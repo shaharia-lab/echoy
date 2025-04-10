@@ -3,6 +3,7 @@ package logger
 
 import (
 	"context"
+	"io"
 )
 
 // Level represents the severity level of a log message
@@ -65,4 +66,10 @@ type Logger interface {
 
 	// Flush ensures all pending log entries are written
 	Flush() error
+
+	// StdoutWriter returns an io.Writer that logs to stdout level
+	StdoutWriter() io.Writer
+
+	// StderrWriter returns an io.Writer that logs to error level
+	StderrWriter() io.Writer
 }

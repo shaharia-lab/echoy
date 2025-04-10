@@ -2,7 +2,19 @@ package logger
 
 import (
 	"context"
+	"io"
 )
+
+// noopWriter implements io.Writer and discards all data
+type noopWriter struct{}
+
+func (w *noopWriter) Write(p []byte) (n int, err error) {
+	// Discard all data but report success
+	return len(p), nil
+}
+
+// Single shared instance of noopWriter to be used by all NoopLogger instances
+var sharedNoopWriter = &noopWriter{}
 
 // NoopLogger is a logger implementation that does nothing.
 // It's useful for testing or when logging should be disabled.
@@ -63,6 +75,16 @@ func (l *NoopLogger) Fatalf(format string, args ...interface{}) {}
 // Flush is a no-op and returns nil because there's nothing to flush.
 func (l *NoopLogger) Flush() error {
 	return nil
+}
+
+// StdoutWriter returns an io.Writer that discards all data
+func (l *NoopLogger) StdoutWriter() io.Writer {
+	return sharedNoopWriter
+}
+
+// StderrWriter returns an io.Writer that discards all data
+func (l *NoopLogger) StderrWriter() io.Writer {
+	return sharedNoopWriter
 }
 
 // Ensure NoopLogger implements the Logger interface.
