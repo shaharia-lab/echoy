@@ -54,15 +54,12 @@ type Client struct {
 	WriteTimeout time.Duration
 }
 
-// NewSocketClient creates a new DaemonClient with a UnixSocketProvider
-func NewSocketClient(socketPath string) *Client {
+// NewClient creates a new DaemonClient with a UnixSocketProvider
+func NewClient(connectionProvider ConnectionProvider, readTimeout, writeTimeout time.Duration) *Client {
 	return &Client{
-		Provider: &UnixSocketProvider{
-			SocketPath: socketPath,
-			Timeout:    2 * time.Second,
-		},
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 2 * time.Second,
+		Provider:     connectionProvider,
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
 	}
 }
 
