@@ -1,3 +1,4 @@
+// Package logger provides a common interface for logging libraries
 package logger
 
 const (
