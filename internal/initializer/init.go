@@ -14,7 +14,7 @@ type Initializer struct {
 	Config        config.Config
 	IsUpdateMode  bool
 	configManager ConfigManager
-	log           *logger.Logger
+	log           logger.Logger
 	appConfig     *config.AppConfig
 	cliTheme      *theme.Manager
 }
@@ -35,7 +35,7 @@ func NewDefaultConfigManager(configFilePath string) *DefaultConfigManager {
 }
 
 // NewInitializer creates a new initializer with default dependencies
-func NewInitializer(log *logger.Logger, appCfg *config.AppConfig, theme *theme.Manager, configManager ConfigManager) *Initializer {
+func NewInitializer(log logger.Logger, appCfg *config.AppConfig, theme *theme.Manager, configManager ConfigManager) *Initializer {
 	return &Initializer{
 		log:           log,
 		appConfig:     appCfg,
@@ -52,16 +52,16 @@ func (i *Initializer) WithConfigManager(cm ConfigManager) *Initializer {
 
 // Run starts the interactive configuration process
 func (i *Initializer) Run() error {
-	i.log.Debug("Starting configuration process")
+	i.log.Debug("Starting configuration process", nil)
 
 	var err error
 	i.IsUpdateMode = true
-	i.log.Debug(fmt.Sprintf("Update mode: %v", i.IsUpdateMode))
+	i.log.Debugf("Update mode: %v", i.IsUpdateMode)
 
 	if i.IsUpdateMode {
 		i.Config, err = i.configManager.LoadConfig()
 		if err != nil {
-			i.log.Error(fmt.Sprintf("error loading configuration: %v", err))
+			i.log.Errorf("error loading configuration: %v", err)
 			return fmt.Errorf("error loading configuration: %v", err)
 		}
 
@@ -77,35 +77,35 @@ func (i *Initializer) Run() error {
 
 	err = i.ConfigureAssistant("Ehcoy")
 	if err != nil {
-		i.log.Error(fmt.Sprintf("error configuring assistant: %v", err))
+		i.log.Errorf("error configuring assistant: %v", err)
 		return fmt.Errorf("error configuring assistant: %v", err)
 	}
 
 	err = i.ConfigureUser()
 	if err != nil {
-		i.log.Error(fmt.Sprintf("error configuring user: %v", err))
+		i.log.Errorf("error configuring user: %v", err)
 		return fmt.Errorf("error configuring user: %v", err)
 	}
 
 	err = llm.ConfigureLLM(i.cliTheme, &i.Config)
 	if err != nil {
-		i.log.Error(fmt.Sprintf("error configuring LLM: %v", err))
+		i.log.Errorf("error configuring LLM: %v", err)
 		return fmt.Errorf("error configuring LLM: %v", err)
 	}
 
 	err = telemetry.Configure(i.cliTheme, &i.Config)
 	if err != nil {
-		i.log.Error(fmt.Sprintf("error configuring telemetry: %v", err))
+		i.log.Errorf("error configuring telemetry: %v", err)
 		return fmt.Errorf("error configuring telemetry: %v", err)
 	}
 
-	i.log.Debug(fmt.Sprintf("Saving configuration: %v", i.Config))
+	i.log.Debugf("Saving configuration: %v", i.Config)
 	if err := i.configManager.SaveConfig(i.Config); err != nil {
-		i.log.Error(fmt.Sprintf("error saving configuration: %v", err))
+		i.log.Errorf("error saving configuration: %v", err)
 		return fmt.Errorf("error saving configuration: %v", err)
 	}
 
-	i.log.Debug("Configuration process complete")
+	i.log.Debug("Configuration process complete", nil)
 	i.cliTheme.GetCurrentTheme().Success().Println("\n✅ Configuration updated successfully!")
 	return nil
 }

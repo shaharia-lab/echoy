@@ -16,14 +16,14 @@ import (
 )
 
 // BuildWebserver initializes the web server with the provided configuration and dependencies
-func BuildWebserver(config config.Config, themeManager *theme.Manager, webUIStaticDirectory string, logger *logger.Logger) (*WebServer, error) {
+func BuildWebserver(config config.Config, themeManager *theme.Manager, webUIStaticDirectory string, logger logger.Logger) (*WebServer, error) {
 	ts := []mcp.Tool{
 		mcpTools.GetWeather,
 	}
 
 	llmService, err := llm.NewLLMService(config.LLM)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create LLM service: %v", err))
+		logger.Errorf("Failed to create LLM service: %v", err)
 		themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to create LLM service: %v", err))
 		return nil, err
 	}

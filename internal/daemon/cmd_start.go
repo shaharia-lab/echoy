@@ -24,7 +24,7 @@ import (
 )
 
 // NewStartCmd creates a command to run the daemon
-func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l *loggerInt.Logger, sLogger *slog.Logger) *cobra.Command {
+func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManager *theme.Manager, socketPath string, webUIStaticDirectory string, l loggerInt.Logger, sLogger *slog.Logger) *cobra.Command {
 	var foreground bool
 
 	cmd := &cobra.Command{

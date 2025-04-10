@@ -15,7 +15,7 @@ type Container struct {
 	Config         *config.AppConfig
 	Filesystem     *filesystem.Filesystem
 	Paths          map[filesystem.PathType]string
-	Logger         *logger.Logger
+	Logger         logger.Logger
 	ThemeMgr       *theme.Manager
 	Initializer    *initializer.Initializer
 	ConfigFromFile config.Config
@@ -77,19 +77,24 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.Config.SystemConfig = systemConfig
 
-	loggerConfig := logger.Config{
-		FilePath:  container.Paths[filesystem.LogsFilePath],
-		LogLevel:  logger.DebugLevel,
-		MaxSizeMB: logger.DefaultMaxSizeMB,
-	}
-	zapLogger, err := logger.BuildZapLogger(loggerConfig)
+	log, err := logger.NewZapLogger(logger.Config{
+		LogLevel:    logger.DebugLevel,
+		UseConsole:  true,
+		Development: true,
+
+		InfoFilePath:  fmt.Sprintf("%s/app-info.log", container.Paths[filesystem.LogsDirectory]),
+		WarnFilePath:  fmt.Sprintf("%s/app-warn.log", container.Paths[filesystem.LogsDirectory]),
+		ErrorFilePath: fmt.Sprintf("%s/app-error.log", container.Paths[filesystem.LogsDirectory]),
+
+		MaxSizeMB:  50,
+		MaxAgeDays: 14,
+		MaxBackups: 5,
+	})
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
-	container.Logger, err = logger.NewLogger(loggerConfig, zapLogger)
-	if err != nil {
-		return container, fmt.Errorf("failed to initialize logger: %w", err)
-	}
+
+	container.Logger = log
 
 	container.ConfigFromFile, err = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath]).LoadConfig()
 	if err != nil {

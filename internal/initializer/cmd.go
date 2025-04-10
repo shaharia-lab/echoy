@@ -12,7 +12,7 @@ import (
 )
 
 // NewCmd creates an interactive init command
-func NewCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
+func NewCmd(config config.Config, appConfig *config.AppConfig, logger logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
 	cmd := &cobra.Command{
 		Version: appConfig.Version.VersionText(),
 		Use:     "init",
@@ -29,16 +29,16 @@ func NewCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Lo
 				)
 			}
 
-			logger.Info("Starting initialization...")
+			logger.Info("Starting initialization...", nil)
 			defer logger.Sync()
 
 			if err := initializer.Run(); err != nil {
-				logger.Error(fmt.Sprintf("Initialization failed: %v", err))
+				logger.Errorf("Initialization failed: %v", err)
 				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}
 
-			logger.Info("Initialization complete. You can now run 'echoy' to start using Echoy.")
+			logger.Info("Initialization complete. You can now run 'echoy' to start using Echoy.", nil)
 
 			themeManager.GetCurrentTheme().Info().Println("\nRun 'echoy chat' to start an interactive chat session.")
 			themeManager.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
