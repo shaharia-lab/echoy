@@ -32,13 +32,11 @@ type UnixSocketProvider struct {
 
 // Connect implements ConnectionProvider.Connect
 func (p *UnixSocketProvider) Connect(ctx context.Context) (net.Conn, error) {
-	// We use DialTimeout instead of ctx to maintain compatibility with net.Dial
 	conn, err := net.DialTimeout("unix", p.SocketPath, p.Timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	// Handle context cancellation
 	go func() {
 		<-ctx.Done()
 		if ctx.Err() != nil {
@@ -49,16 +47,16 @@ func (p *UnixSocketProvider) Connect(ctx context.Context) (net.Conn, error) {
 	return conn, nil
 }
 
-// DaemonClient implements Commander using a ConnectionProvider
-type DaemonClient struct {
+// Client implements Commander using a ConnectionProvider
+type Client struct {
 	Provider     ConnectionProvider
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 }
 
-// NewDaemonClient creates a new DaemonClient with a UnixSocketProvider
-func NewDaemonClient(socketPath string) *DaemonClient {
-	return &DaemonClient{
+// NewSocketClient creates a new DaemonClient with a UnixSocketProvider
+func NewSocketClient(socketPath string) *Client {
+	return &Client{
 		Provider: &UnixSocketProvider{
 			SocketPath: socketPath,
 			Timeout:    2 * time.Second,
@@ -69,38 +67,33 @@ func NewDaemonClient(socketPath string) *DaemonClient {
 }
 
 // Execute implements Commander.Execute
-func (c *DaemonClient) Execute(ctx context.Context, cmd string) (string, error) {
+func (c *Client) Execute(ctx context.Context, cmd string) (string, error) {
 	conn, err := c.Provider.Connect(ctx)
 	if err != nil {
 		return "", errors.New("failed to connect to daemon: " + err.Error())
 	}
 	defer conn.Close()
 
-	// Set write deadline
 	if c.WriteTimeout > 0 {
 		if err := conn.SetWriteDeadline(time.Now().Add(c.WriteTimeout)); err != nil {
 			return "", errors.New("failed to set write deadline: " + err.Error())
 		}
 	}
 
-	// Ensure command ends with newline
 	if !strings.HasSuffix(cmd, "\n") {
 		cmd = cmd + "\n"
 	}
 
-	// Send command
 	if _, err := conn.Write([]byte(cmd)); err != nil {
 		return "", errors.New("failed to send command: " + err.Error())
 	}
 
-	// Set read deadline
 	if c.ReadTimeout > 0 {
 		if err := conn.SetReadDeadline(time.Now().Add(c.ReadTimeout)); err != nil {
 			return "", errors.New("failed to set read deadline: " + err.Error())
 		}
 	}
 
-	// Read response
 	reader := bufio.NewReader(conn)
 	var response strings.Builder
 
@@ -112,7 +105,6 @@ func (c *DaemonClient) Execute(ctx context.Context, cmd string) (string, error) 
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF || response.Len() > 0 {
-					// Return what we have if we've read anything
 					return strings.TrimSpace(response.String()), nil
 				}
 				return "", errors.New("failed to read response: " + err.Error())
@@ -120,7 +112,6 @@ func (c *DaemonClient) Execute(ctx context.Context, cmd string) (string, error) 
 
 			response.WriteString(line)
 
-			// Check for end marker
 			trimmed := strings.TrimSpace(line)
 			if trimmed == "END" || trimmed == "" {
 				return strings.TrimSpace(response.String()), nil
@@ -130,7 +121,7 @@ func (c *DaemonClient) Execute(ctx context.Context, cmd string) (string, error) 
 }
 
 // IsRunning implements Commander.IsRunning
-func (c *DaemonClient) IsRunning(ctx context.Context) (bool, string) {
+func (c *Client) IsRunning(ctx context.Context) (bool, string) {
 	response, err := c.Execute(ctx, "PING")
 	if err != nil {
 		return false, "not running: " + err.Error()

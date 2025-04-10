@@ -114,7 +114,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				tt.setupMock(mockProvider, mockConn)
 			}
 
-			client := &DaemonClient{
+			client := &Client{
 				Provider: mockProvider,
 			}
 
@@ -181,7 +181,7 @@ func TestDaemonClient_IsRunning(t *testing.T) {
 				tt.setupMock(mockProvider, mockConn)
 			}
 
-			client := &DaemonClient{
+			client := &Client{
 				Provider: mockProvider,
 			}
 
