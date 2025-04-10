@@ -31,8 +31,8 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger logg
 				)
 			}
 
-			logger.Info("Checking daemon status...", nil)
-			defer logger.Sync()
+			logger.Info("Checking daemon status...")
+			defer logger.Flush()
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 

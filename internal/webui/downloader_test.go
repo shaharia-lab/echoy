@@ -205,7 +205,7 @@ func TestDownloadFrontend(t *testing.T) {
 				t.Fatalf("Failed to create test dir: %v", err)
 			}
 
-			noOpLogger := logger.NewNoOpLogger()
+			noOpLogger := logger.NewNoopLogger()
 
 			downloader := NewFrontendGitHubReleaseDownloader(testDir, mockClient, noOpLogger)
 			err = downloader.DownloadFrontend(tt.version)

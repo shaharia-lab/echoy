@@ -63,25 +63,25 @@ func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient 
 
 // DownloadFrontend downloads the frontend assets from a GitHub release and extracts them to the specified directory.
 func (d *FrontendGitHubReleaseDownloader) DownloadFrontend(version string) error {
-	d.logger.WithField("version", version).Info("Downloading frontend assets...", nil)
+	d.logger.WithField("version", version).Info("Downloading frontend assets...")
 	downloadURL, err := d.getDownloadURL(version)
 	if err != nil {
-		d.logger.WithField("error", err).Error("Failed to get download URL", nil)
+		d.logger.WithField("error", err).Error("Failed to get download URL")
 		return fmt.Errorf("failed to get download URL: %w", err)
 	}
 
-	d.logger.WithFields(map[string]interface{}{"version": version, "download_url": downloadURL}).Info("Downloading frontend asset...", nil)
+	d.logger.WithFields(map[string]interface{}{"version": version, "download_url": downloadURL}).Info("Downloading frontend asset...")
 	zipPath, err := d.downloadAsset(downloadURL)
 	if err != nil {
-		d.logger.WithField("error", err).Error("Failed to download frontend asset", nil)
+		d.logger.WithField("error", err).Error("Failed to download frontend asset")
 		return fmt.Errorf("failed to download frontend asset: %w", err)
 	}
 	defer os.Remove(zipPath)
 
-	d.logger.WithField("zip_path", zipPath).Info("Extracting frontend asset...", nil)
+	d.logger.WithField("zip_path", zipPath).Info("Extracting frontend asset...")
 
 	if err := d.extractZip(zipPath); err != nil {
-		d.logger.WithField("error", err).Error("Failed to extract frontend asset", nil)
+		d.logger.WithField("error", err).Error("Failed to extract frontend asset")
 		return fmt.Errorf("failed to extract frontend: %w", err)
 	}
 

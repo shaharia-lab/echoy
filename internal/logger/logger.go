@@ -9,7 +9,4 @@ const (
 
 	// DefaultMaxAgeDays defines the default maximum number of days to keep old log files
 	DefaultMaxAgeDays = 30
-
-	// DefaultLogLevel defines the default logging level
-	DefaultLogLevel = InfoLevel
 )

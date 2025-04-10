@@ -27,7 +27,7 @@ type InitOptions struct {
 	Version  string
 	Commit   string
 	Date     string
-	LogLevel logger.LogLevel
+	LogLevel logger.Level
 	Theme    theme.Theme
 }
 
@@ -38,7 +38,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	defer func() {
 		if container.Logger != nil {
-			defer container.Logger.Sync()
+			defer container.Logger.Flush()
 		}
 	}()
 
@@ -82,7 +82,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 		UseConsole:  true,
 		Development: true,
 
-		InfoFilePath:  fmt.Sprintf("%s/app-info.log", container.Paths[filesystem.LogsDirectory]),
+		LogFilePath:   fmt.Sprintf("%s/app-info.log", container.Paths[filesystem.LogsDirectory]),
 		WarnFilePath:  fmt.Sprintf("%s/app-warn.log", container.Paths[filesystem.LogsDirectory]),
 		ErrorFilePath: fmt.Sprintf("%s/app-error.log", container.Paths[filesystem.LogsDirectory]),
 
@@ -98,7 +98,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.ConfigFromFile, err = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath]).LoadConfig()
 	if err != nil {
-		container.Logger.Errorf(fmt.Sprintf("error loading configuration: %v", err))
+		container.Logger.WithField(logger.ErrorKey, err).Error("error loading configuration")
 		return container, fmt.Errorf("error loading configuration: %w", err)
 	}
 

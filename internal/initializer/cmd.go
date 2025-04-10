@@ -29,8 +29,8 @@ func NewCmd(config config.Config, appConfig *config.AppConfig, logger logger.Log
 				)
 			}
 
-			logger.Info("Starting initialization...", nil)
-			defer logger.Sync()
+			logger.Info("Starting initialization...")
+			defer logger.Flush()
 
 			if err := initializer.Run(); err != nil {
 				logger.Errorf("Initialization failed: %v", err)
@@ -38,7 +38,7 @@ func NewCmd(config config.Config, appConfig *config.AppConfig, logger logger.Log
 				return err
 			}
 
-			logger.Info("Initialization complete. You can now run 'echoy' to start using Echoy.", nil)
+			logger.Info("Initialization complete. You can now run 'echoy' to start using Echoy.")
 
 			themeManager.GetCurrentTheme().Info().Println("\nRun 'echoy chat' to start an interactive chat session.")
 			themeManager.GetCurrentTheme().Info().Println("Run 'echoy help' to see the available commands.")
