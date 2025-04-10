@@ -21,9 +21,9 @@ func (_m *MockCommander) EXPECT() *MockCommander_Expecter {
 	return &MockCommander_Expecter{mock: &_m.Mock}
 }
 
-// Execute provides a mock function with given fields: ctx, cmd
-func (_m *MockCommander) Execute(ctx context.Context, cmd string) (string, error) {
-	ret := _m.Called(ctx, cmd)
+// Execute provides a mock function with given fields: ctx, cmd, args
+func (_m *MockCommander) Execute(ctx context.Context, cmd string, args []string) (string, error) {
+	ret := _m.Called(ctx, cmd, args)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Execute")
@@ -31,17 +31,17 @@ func (_m *MockCommander) Execute(ctx context.Context, cmd string) (string, error
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
-		return rf(ctx, cmd)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) (string, error)); ok {
+		return rf(ctx, cmd, args)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
-		r0 = rf(ctx, cmd)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) string); ok {
+		r0 = rf(ctx, cmd, args)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, cmd)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []string) error); ok {
+		r1 = rf(ctx, cmd, args)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -57,13 +57,14 @@ type MockCommander_Execute_Call struct {
 // Execute is a helper method to define mock.On call
 //   - ctx context.Context
 //   - cmd string
-func (_e *MockCommander_Expecter) Execute(ctx interface{}, cmd interface{}) *MockCommander_Execute_Call {
-	return &MockCommander_Execute_Call{Call: _e.mock.On("Execute", ctx, cmd)}
+//   - args []string
+func (_e *MockCommander_Expecter) Execute(ctx interface{}, cmd interface{}, args interface{}) *MockCommander_Execute_Call {
+	return &MockCommander_Execute_Call{Call: _e.mock.On("Execute", ctx, cmd, args)}
 }
 
-func (_c *MockCommander_Execute_Call) Run(run func(ctx context.Context, cmd string)) *MockCommander_Execute_Call {
+func (_c *MockCommander_Execute_Call) Run(run func(ctx context.Context, cmd string, args []string)) *MockCommander_Execute_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
 	})
 	return _c
 }
@@ -73,7 +74,7 @@ func (_c *MockCommander_Execute_Call) Return(_a0 string, _a1 error) *MockCommand
 	return _c
 }
 
-func (_c *MockCommander_Execute_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockCommander_Execute_Call {
+func (_c *MockCommander_Execute_Call) RunAndReturn(run func(context.Context, string, []string) (string, error)) *MockCommander_Execute_Call {
 	_c.Call.Return(run)
 	return _c
 }

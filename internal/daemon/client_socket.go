@@ -12,8 +12,8 @@ import (
 
 // Commander defines an interface for sending commands to the daemon
 type Commander interface {
-	// Execute sends a command to the daemon and returns the response
-	Execute(ctx context.Context, cmd string) (string, error)
+	// Execute sends a command with arguments to the daemon and returns the response
+	Execute(ctx context.Context, cmd string, args []string) (string, error)
 	// IsRunning checks if the daemon is running and responsive
 	IsRunning(ctx context.Context) (bool, string)
 }
@@ -64,7 +64,7 @@ func NewClient(connectionProvider ConnectionProvider, readTimeout, writeTimeout 
 }
 
 // Execute implements Commander.Execute
-func (c *Client) Execute(ctx context.Context, cmd string) (string, error) {
+func (c *Client) Execute(ctx context.Context, cmd string, args []string) (string, error) {
 	conn, err := c.Provider.Connect(ctx)
 	if err != nil {
 		return "", errors.New("failed to connect to daemon: " + err.Error())
@@ -77,14 +77,20 @@ func (c *Client) Execute(ctx context.Context, cmd string) (string, error) {
 		}
 	}
 
-	if !strings.HasSuffix(cmd, "\n") {
-		cmd = cmd + "\n"
+	// Format the command line from cmd and args
+	cmdLine := cmd
+	for _, arg := range args {
+		cmdLine += " " + arg
+	}
+	if !strings.HasSuffix(cmdLine, "\n") {
+		cmdLine = cmdLine + "\n"
 	}
 
-	if _, err := conn.Write([]byte(cmd)); err != nil {
+	if _, err := conn.Write([]byte(cmdLine)); err != nil {
 		return "", errors.New("failed to send command: " + err.Error())
 	}
 
+	// The rest of the method remains the same
 	if c.ReadTimeout > 0 {
 		if err := conn.SetReadDeadline(time.Now().Add(c.ReadTimeout)); err != nil {
 			return "", errors.New("failed to set read deadline: " + err.Error())
@@ -119,7 +125,7 @@ func (c *Client) Execute(ctx context.Context, cmd string) (string, error) {
 
 // IsRunning implements Commander.IsRunning
 func (c *Client) IsRunning(ctx context.Context) (bool, string) {
-	response, err := c.Execute(ctx, "PING")
+	response, err := c.Execute(ctx, "PING", nil)
 	if err != nil {
 		return false, "not running: " + err.Error()
 	}

@@ -118,7 +118,7 @@ func TestDaemonClient_Execute(t *testing.T) {
 				Provider: mockProvider,
 			}
 
-			got, err := client.Execute(context.Background(), tt.cmd)
+			got, err := client.Execute(context.Background(), tt.cmd, nil)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
