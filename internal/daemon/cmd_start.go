@@ -108,8 +108,7 @@ func NewStartCmd(appConf config.Config, appConfig *config.AppConfig, themeManage
 			daemonInstance.RegisterCommand("PING", DefaultPingHandler)
 			daemonInstance.RegisterCommand("STATUS", MakeDefaultStatusHandler(daemonInstance))
 			daemonInstance.RegisterCommand("STOP", MakeDefaultStopHandler(daemonInstance))
-			daemonInstance.RegisterCommand("START-WEBSERVER", webSrvr.StartHandler())
-			daemonInstance.RegisterCommand("STOP-WEBSERVER", webSrvr.StopHandler())
+			daemonInstance.RegisterCommand("WEBSERVER", webSrvr.DaemonCommandHandler())
 
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()

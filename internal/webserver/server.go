@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -179,22 +180,30 @@ func (ws *WebServer) Stop(ctx context.Context) error {
 	return err
 }
 
-// StartHandler returns a CommandFunc that starts the web server
-func (ws *WebServer) StartHandler() types.CommandFunc {
+// DaemonCommandHandler returns a CommandFunc that starts the web server
+func (ws *WebServer) DaemonCommandHandler() types.CommandFunc {
 	return func(ctx context.Context, args []string) (string, error) {
-		if err := ws.Start(); err != nil {
-			return "", fmt.Errorf("failed to start web server: %w", err)
+		if len(args) == 0 {
+			return "", fmt.Errorf("missing subcommand: please specify 'start' or 'stop'")
 		}
-		return fmt.Sprintf("Web server started successfully on port %s", ws.APIPort), nil
-	}
-}
 
-// StopHandler returns a CommandFunc that stops the web server
-func (ws *WebServer) StopHandler() types.CommandFunc {
-	return func(ctx context.Context, args []string) (string, error) {
-		if err := ws.Stop(ctx); err != nil {
-			return "", fmt.Errorf("failed to stop web server: %w", err)
+		subcommand := strings.ToLower(args[0])
+
+		switch subcommand {
+		case "start":
+			if err := ws.Start(); err != nil {
+				return "", fmt.Errorf("failed to start web server: %w", err)
+			}
+			return fmt.Sprintf("Web server started successfully on port %s", ws.APIPort), nil
+
+		case "stop":
+			if err := ws.Stop(ctx); err != nil {
+				return "", fmt.Errorf("failed to stop web server: %w", err)
+			}
+			return "Web server stopped successfully", nil
+
+		default:
+			return "", fmt.Errorf("unknown subcommand '%s': valid subcommands are 'start', 'stop', and 'status'", subcommand)
 		}
-		return "Web server stopped successfully", nil
 	}
 }
