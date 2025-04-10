@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"log/slog"
 	"net"
@@ -180,10 +181,6 @@ func tempSocketPath(t *testing.T) string {
 	os.Remove(path)
 	t.Logf("Using temporary socket path: %s", path)
 	return path
-}
-
-func testLogger(buf *bytes.Buffer) *slog.Logger {
-	return slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 }
 
 // createTestDaemon provides a helper to setup a daemon for connection tests
@@ -775,5 +772,79 @@ func TestStop_ClosesConnections(t *testing.T) {
 	d.connMu.RUnlock()
 	if finalTrackedCount != 0 {
 		t.Errorf("Expected 0 connections tracked after Stop completed, found %d", finalTrackedCount)
+	}
+}
+
+func TestDaemon_CommandArgHandling(t *testing.T) {
+	socketPath := tempSocketPath(t)
+	t.Cleanup(func() { os.RemoveAll(socketPath) })
+
+	var receivedArgs []string
+	var handlerCalled bool
+
+	cfg := Config{
+		SocketPath: socketPath,
+		Logger:     slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	d, _ := createTestDaemon(t, cfg)
+
+	testCmdName := "TESTCMD"
+	d.RegisterCommand(testCmdName, func(ctx context.Context, args []string) (string, error) {
+		handlerCalled = true
+		receivedArgs = args
+		return "OK", nil
+	})
+
+	err := d.Start()
+	if err != nil {
+		t.Fatalf("Failed to start daemon: %v", err)
+	}
+	defer d.Stop()
+
+	time.Sleep(100 * time.Millisecond)
+
+	provider := &UnixSocketProvider{
+		SocketPath: socketPath,
+		Timeout:    500 * time.Millisecond,
+	}
+	client := NewClient(provider, 500*time.Millisecond, 2*time.Second)
+
+	testCases := []struct {
+		name         string
+		args         []string
+		expectedArgs []string
+	}{
+		{
+			name:         "no arguments",
+			args:         nil,
+			expectedArgs: []string{},
+		},
+		{
+			name:         "simple arguments",
+			args:         []string{"arg1", "arg2", "arg3"},
+			expectedArgs: []string{"arg1", "arg2", "arg3"},
+		},
+		{
+			name:         "argument with quotes",
+			args:         []string{"arg1", "arg with spaces", "arg3"},
+			expectedArgs: []string{"arg1", "arg", "with", "spaces", "arg3"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			handlerCalled = false
+			receivedArgs = nil
+
+			ctx := context.Background()
+			response, err := client.Execute(ctx, testCmdName, tc.args)
+
+			assert.NoError(t, err, "Execute should not return an error")
+			assert.Equal(t, "OK: OK", response, "Response should be 'OK: OK'")
+
+			assert.True(t, handlerCalled, "Handler should have been called")
+			assert.Equal(t, tc.expectedArgs, receivedArgs, "Arguments not received correctly")
+		})
 	}
 }

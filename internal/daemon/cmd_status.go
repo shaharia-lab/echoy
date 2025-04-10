@@ -9,10 +9,7 @@ import (
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/shaharia-lab/telemetry-collector"
 	"github.com/spf13/cobra"
-	"net"
-	"net/http"
 	"os"
-	"strings"
 	"text/tabwriter"
 	"time"
 )
@@ -22,7 +19,7 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Check the status of the Echoy daemon",
-		Long:  `Checks if the Echoy daemon and its components are currently running.`,
+		Long:  `Checks if the Echoy daemon is currently running.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if config.UsageTracking.Enabled {
 				telemetryEvent.SendTelemetryEvent(
@@ -41,83 +38,30 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 
 			fmt.Fprintln(w, "COMPONENT\tSTATUS\tDETAILS")
 
-			daemonStatus, daemonResponsive := checkDaemonStatus(socketPath)
-
-			if daemonResponsive {
-				fmt.Fprintln(w, fmt.Sprintf("daemon\trunning\t-"))
-			} else {
-				fmt.Fprintln(w, fmt.Sprintf("daemon\t%s\t-", daemonStatus))
-				w.Flush()
-
-				themeManager.GetCurrentTheme().Warning().Println("\nDaemon is not running. Start it with 'echoy daemon start'")
-				return nil
+			provider := &UnixSocketProvider{
+				SocketPath: socketPath,
+				Timeout:    500 * time.Millisecond,
 			}
 
-			webServerPort := "10222"
-			webServerStatus, webServerDetails := checkWebServerStatus(webServerPort)
-			fmt.Fprintln(w, fmt.Sprintf("webserver\t%s\t%s", webServerStatus, webServerDetails))
+			client := NewClient(provider, 500*time.Millisecond, 2*time.Second)
 
-			w.Flush()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
 
-			if webServerStatus == "running" {
-				themeManager.GetCurrentTheme().Success().Println("\nAll components are running correctly")
+			isRunning, status := client.IsRunning(ctx)
+
+			if isRunning {
+				fmt.Fprintln(w, fmt.Sprintf("daemon\trunning\t-"))
+				w.Flush()
+				themeManager.GetCurrentTheme().Success().Println("\nDaemon is running correctly")
 			} else {
-				themeManager.GetCurrentTheme().Warning().Println("\nSome components are not running correctly")
+				fmt.Fprintln(w, fmt.Sprintf("daemon\t%s\t-", status))
+				w.Flush()
+				themeManager.GetCurrentTheme().Warning().Println("\nDaemon is not running. Start it with 'echoy daemon start'")
 			}
 
 			return nil
 		},
 	}
 	return cmd
-}
-
-// checkDaemonStatus verifies if the daemon is running and responsive
-func checkDaemonStatus(socketPath string) (string, bool) {
-	conn, err := net.DialTimeout("unix", socketPath, 2*time.Second)
-	if err != nil {
-		return "not running", false
-	}
-	defer conn.Close()
-
-	_, err = conn.Write([]byte("PING\n"))
-	if err != nil {
-		return "not responsive", false
-	}
-
-	buffer := make([]byte, 128)
-	err = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-	if err != nil {
-		return "socket error", false
-	}
-
-	n, err := conn.Read(buffer)
-	if err != nil || n == 0 {
-		return "not responding", false
-	}
-
-	response := string(buffer[:n])
-	if strings.TrimSpace(response) == "PONG" {
-		return "running", true
-	}
-
-	return "unexpected response", false
-}
-
-// checkWebServerStatus verifies if the webserver is running
-func checkWebServerStatus(port string) (string, string) {
-	client := http.Client{
-		Timeout: 2 * time.Second,
-	}
-
-	resp, err := client.Get(fmt.Sprintf("http://localhost:%s/ping", port))
-	if err != nil {
-		return "not running", "-"
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return "running", fmt.Sprintf("port %s", port)
-	}
-
-	return "error", fmt.Sprintf("status %d", resp.StatusCode)
 }
