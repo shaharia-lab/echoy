@@ -13,15 +13,13 @@ import (
 
 // Config holds the logger configuration options
 type Config struct {
-	LogLevel      Level
-	LogFilePath   string
-	WarnFilePath  string
-	ErrorFilePath string
-	MaxSizeMB     int
-	MaxBackups    int
-	MaxAgeDays    int
-	UseConsole    bool
-	Development   bool
+	LogLevel    Level
+	LogFilePath string
+	MaxSizeMB   int
+	MaxBackups  int
+	MaxAgeDays  int
+	UseConsole  bool
+	Development bool
 }
 
 // ZapLogger provides a concrete implementation of the Logger using zap.

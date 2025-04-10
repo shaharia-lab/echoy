@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/daemon"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/theme"
 	"github.com/spf13/cobra"
 	"log/slog"
@@ -12,7 +13,7 @@ import (
 )
 
 // NewWebserverCmd creates a command to manage the webserver through the daemon
-func NewWebserverCmd(socketPath string, themeManager *theme.Manager, sLogger *slog.Logger) *cobra.Command {
+func NewWebserverCmd(socketPath string, themeManager *theme.Manager, sLogger *slog.Logger, serverLogger logger.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "webserver [start|stop]",
 		Short: "Manage the Echoy web server",

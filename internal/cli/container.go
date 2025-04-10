@@ -12,14 +12,15 @@ import (
 
 // Container holds all application dependencies
 type Container struct {
-	Config         *config.AppConfig
-	Filesystem     *filesystem.Filesystem
-	Paths          map[filesystem.PathType]string
-	Logger         logger.Logger
-	ThemeMgr       *theme.Manager
-	Initializer    *initializer.Initializer
-	ConfigFromFile config.Config
-	SocketFilePath string
+	Config          *config.AppConfig
+	Filesystem      *filesystem.Filesystem
+	Paths           map[filesystem.PathType]string
+	Logger          logger.Logger
+	WebServerLogger logger.Logger
+	ThemeMgr        *theme.Manager
+	Initializer     *initializer.Initializer
+	ConfigFromFile  config.Config
+	SocketFilePath  string
 }
 
 // InitOptions contains options for initialization
@@ -82,9 +83,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 		UseConsole:  true,
 		Development: true,
 
-		LogFilePath:   fmt.Sprintf("%s/app-info.log", container.Paths[filesystem.LogsDirectory]),
-		WarnFilePath:  fmt.Sprintf("%s/app-warn.log", container.Paths[filesystem.LogsDirectory]),
-		ErrorFilePath: fmt.Sprintf("%s/app-error.log", container.Paths[filesystem.LogsDirectory]),
+		LogFilePath: fmt.Sprintf("%s/echoy.log", container.Paths[filesystem.LogsDirectory]),
 
 		MaxSizeMB:  50,
 		MaxAgeDays: 14,
@@ -95,6 +94,22 @@ func NewContainer(opts InitOptions) (*Container, error) {
 	}
 
 	container.Logger = log
+
+	WebServerLog, err := logger.NewZapLogger(logger.Config{
+		LogLevel:    logger.DebugLevel,
+		UseConsole:  true,
+		Development: true,
+
+		LogFilePath: fmt.Sprintf("%s/webserver.log", container.Paths[filesystem.LogsDirectory]),
+
+		MaxSizeMB:  50,
+		MaxAgeDays: 14,
+		MaxBackups: 5,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("Failed to initialize webserver logger: %v", err))
+	}
+	container.WebServerLogger = WebServerLog
 
 	container.ConfigFromFile, err = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath]).LoadConfig()
 	if err != nil {
