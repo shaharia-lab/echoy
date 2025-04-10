@@ -48,7 +48,7 @@ func main() {
 		chat.NewChatCmd(cliContainer),
 		cmd.NewUpdateCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr),
 		daemon.NewStartCmd(cliContainer, cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.ThemeMgr, cliContainer.SocketFilePath, cliContainer.Paths[filesystem.CacheWebuiBuild], slogger),
-		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, slogger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
+		daemon.NewStopCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		daemon.NewStatusCmd(cliContainer.ConfigFromFile, cliContainer.Config, cliContainer.Logger, cliContainer.ThemeMgr, cliContainer.SocketFilePath),
 		cmd.NewWebserverCmd(cliContainer),
 	)

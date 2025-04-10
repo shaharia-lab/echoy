@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"io"
-	"log/slog"
 	"net"
 	"os"
 	"strings"
@@ -19,7 +19,7 @@ import (
 )
 
 // NewStopCmd creates a command to stop the running daemon
-func NewStopCmd(appConf config.Config, appConfig *config.AppConfig, logger *slog.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
+func NewStopCmd(appConf config.Config, appConfig *config.AppConfig, logger logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
 		Short: "Stop the running Echoy daemon",
