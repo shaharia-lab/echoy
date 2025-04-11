@@ -35,18 +35,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-
-      - name: Send Discord notification
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        uses: Ilshidur/action-discord@master
-        with:
-          args: |
-            🚀 **New Release Available!** 🚀
-
-            Repository: **${{ github.repository }}**
-            Version: **${{ github.ref_name }}**
-
-            📥 [View Repository](https://github.com/${{ github.repository }})
-
-            Thank you for using our project! ✨
