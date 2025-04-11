@@ -136,9 +136,6 @@ func (d *Daemon) Start() error {
 	}()
 
 	cleanupListener = false
-	d.logger.Info("Daemon started successfully, entering wait state.") // New Log Message
-	d.wg.Wait()                                                        // The blocking call
-	d.logger.Info("Daemon main loop(s) finished.")
 	return nil
 }
 
