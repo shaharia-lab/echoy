@@ -43,14 +43,10 @@ jobs:
         with:
           args: |
             🚀 **New Release Available!** 🚀
-            
+
             Repository: **${{ github.repository }}**
-            Version: **${{ github.event.release.tag_name }}**
-            
-            ${{ github.event.release.name }}
-            
-            ${{ github.event.release.body }}
-            
-            📥 [View Release Details](${{ github.event.release.html_url }})
-            
+            Version: **${{ github.ref_name }}**
+
+            📥 [View Repository](https://github.com/${{ github.repository }})
+
             Thank you for using our project! ✨
