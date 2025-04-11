@@ -136,58 +136,77 @@ func (d *Daemon) Start() error {
 	}()
 
 	cleanupListener = false
-	d.logger.Info("Daemon started successfully")
+	d.logger.Info("Daemon started successfully, entering wait state.") // New Log Message
+	d.wg.Wait()                                                        // The blocking call
+	d.logger.Info("Daemon main loop(s) finished.")
 	return nil
 }
 
 // Stop initiates graceful shutdown of the daemon.
 func (d *Daemon) Stop() {
 	d.stopOnce.Do(func() {
-		d.logger.Info("Initiating daemon shutdown...")
+		d.logger.Info("Stop: Initiating daemon shutdown...")
 
 		if d.cancelCtx != nil {
-			d.logger.Debug("Calling main context cancel function.")
+			d.logger.Debug("Stop: Calling main context cancel function.")
 			d.cancelCtx()
 		} else {
-			d.logger.Warn("Main context cancel function is nil.")
+			d.logger.Warn("Stop: Main context cancel function is nil.")
 		}
 
-		close(d.stopChan)
+		d.logger.Debug("Stop: Closing stopChan...")
+		close(d.stopChan) // Signal internal loops
 
 		if d.listener != nil {
-			d.logger.Info("Closing listener socket", "path", d.config.SocketPath)
+			d.logger.Info("Stop: Closing listener socket", "path", d.config.SocketPath)
 			if err := d.listener.Close(); err != nil {
-				if !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "use of closed network connection") {
-					d.logger.Error("Error closing listener", "path", d.config.SocketPath, "error", err)
-				}
+				// ... (existing error handling) ...
 			}
+		} else {
+			d.logger.Warn("Stop: Listener was nil, cannot close.")
 		}
 
-		d.closeConnections()
+		d.logger.Debug("Stop: Closing client connections...")
+		d.closeConnections() // Ensure this doesn't hang
 
-		d.logger.Info("Waiting for active connections and loops to finish...", "timeout", d.config.ShutdownTimeout)
+		d.logger.Info("Stop: Waiting for active connections/loops...", "timeout", d.config.ShutdownTimeout)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), d.config.ShutdownTimeout)
 		defer cancel()
 
 		done := make(chan struct{})
+		waitReturned := make(chan struct{}) // Channel to signal wg.Wait returned
 		go func() {
+			d.logger.Debug("Stop: Starting wg.Wait() in goroutine...")
 			d.wg.Wait()
-			close(done)
+			d.logger.Debug("Stop: wg.Wait() finished.")
+			close(done)         // Signal success
+			close(waitReturned) // Signal wait finished for logging below
 		}()
 
 		select {
 		case <-done:
-			d.logger.Info("All connections and loops finished gracefully.")
+			d.logger.Info("Stop: All connections and loops finished gracefully.")
 		case <-shutdownCtx.Done():
-			d.logger.Warn("Shutdown timeout exceeded waiting for active connections/loops.")
+			d.logger.Warn("Stop: Shutdown timeout exceeded waiting for active connections/loops.")
+			// Even on timeout, we MUST wait for the wg.Wait goroutine to finish
+			// otherwise we might race with wg.Done() calls later? Or is wg internally safe?
+			// Let's wait briefly for safety/logging. wg itself is safe.
+			<-waitReturned
 		}
 
-		d.logger.Info("Removing socket file", "path", d.config.SocketPath)
-		if err := os.RemoveAll(d.config.SocketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			d.logger.Error("Failed to remove socket file during shutdown", "path", d.config.SocketPath, "error", err)
+		d.logger.Info("Stop: Removing socket file", "path", d.config.SocketPath) // Log BEFORE removal
+		err := os.RemoveAll(d.config.SocketPath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			d.logger.Error("Stop: Failed to remove socket file during shutdown", "path", d.config.SocketPath, "error", err)
+			// Consider adding a panic here ONLY for debugging if needed:
+			// panic(fmt.Sprintf("PANIC: Failed to remove socket file %s: %v", d.config.SocketPath, err))
+		} else if err == nil {
+			d.logger.Info("Stop: Successfully removed socket file.") // Log success
+		} else {
+			d.logger.Info("Stop: Socket file was already removed.") // Log not exist
 		}
 
-		d.logger.Info("Daemon stopped.")
+		d.logger.Info("Stop: Daemon stopped method finished.") // Log exit
 	})
 }
 

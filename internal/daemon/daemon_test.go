@@ -1,11 +1,13 @@
 package daemon
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net"
 	"os"
@@ -202,7 +204,17 @@ func createTestDaemon(t *testing.T, cfg Config) (*Daemon, string) {
 		cfg.CommandExecTimeout = 500 * time.Millisecond
 	}
 
-	d := NewDaemon(cfg, logger.NewNoopLogger())
+	daemonLog, _ := logger.NewZapLogger(logger.Config{
+		LogLevel:    logger.DebugLevel,
+		LogFilePath: fmt.Sprintf("%s/daemon.log", "/tmp"),
+		MaxSizeMB:   50,
+		MaxAgeDays:  14,
+		MaxBackups:  5,
+		Development: true,
+		UseConsole:  true,
+	})
+
+	d := NewDaemon(cfg, daemonLog)
 	if d == nil {
 		t.Fatal("NewDaemon returned nil")
 	}
@@ -321,7 +333,7 @@ func TestHandleConnection_ReadTimeout(t *testing.T) {
 	n, err := clientConn.Read(readBuf)
 
 	if err == nil {
-		t.Errorf("Expected error reading from clientConn after server timeout, but got %d bytes", n)
+		t.Errorf("Expected error reading frStopom clientConn after server timeout, but got %d bytes", n)
 	} else if !errors.Is(err, io.EOF) && !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "closed") {
 		t.Errorf("Expected EOF or closed error reading from clientConn, got: %v", err)
 	}
@@ -846,4 +858,174 @@ func TestDaemon_CommandArgHandling(t *testing.T) {
 			assert.Equal(t, tc.expectedArgs, receivedArgs, "Arguments not received correctly")
 		})
 	}
+}
+
+// The New Test
+func TestStopCommandTerminatesDaemon(t *testing.T) {
+	socketPath := tempSocketPath(t)
+	t.Cleanup(func() { os.RemoveAll(socketPath) })
+
+	// 1. Setup Context and Daemon (similar to cmd_start.go)
+	// Use context.WithCancel for direct control in the test.
+	appCtx, appCancel := context.WithCancel(context.Background())
+	defer appCancel() // Ensure context is eventually cancelled if test fails early
+
+	cfg := Config{
+		SocketPath:         socketPath,
+		ShutdownTimeout:    500 * time.Millisecond, // Use a shorter timeout for tests
+		ReadTimeout:        1 * time.Second,
+		WriteTimeout:       1 * time.Second,
+		CommandExecTimeout: 1 * time.Second,
+	}
+	daemonInstance, _ := createTestDaemon(t, cfg) // Pass the cancel func
+	daemonInstance.SetCancelFunc(appCancel)
+
+	// Register the essential STOP command handler
+	daemonInstance.RegisterCommand("STOP", MakeDefaultStopHandler(daemonInstance))
+	// Optional: Register PING for readiness check if needed
+	daemonInstance.RegisterCommand("PING", DefaultPingHandler)
+
+	// 2. Run the Daemon and simulated "Main Application" loop
+	startErrChan := make(chan error, 1)
+	mainRoutineFinished := make(chan struct{})
+	listenerExited := make(chan struct{}) // To wait specifically for the Start() goroutine
+
+	// Goroutine simulating the main part of 'start --foreground'
+	go func() {
+		t.Log("Test: Main App Goroutine: Started")
+		defer func() {
+			t.Log("Test: Main App Goroutine: Exiting")
+			close(mainRoutineFinished) // Signal that this goroutine has finished
+		}()
+
+		// Goroutine simulating the one calling daemonInstance.Start()
+		go func() {
+			t.Log("Test: Listener Goroutine: Starting daemonInstance.Start()")
+			defer func() {
+				t.Log("Test: Listener Goroutine: Exited daemonInstance.Start()")
+				close(listenerExited) // Signal listener has exited
+			}()
+			err := daemonInstance.Start()
+			// Only report error if it wasn't due to expected closure via context cancellation/Stop()
+			if err != nil && !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "use of closed network connection") {
+				select {
+				case <-appCtx.Done():
+					t.Logf("Test: Listener Goroutine: daemonInstance.Start() returned error after context cancel (likely expected): %v", err)
+				default:
+					t.Logf("Test: Listener Goroutine: daemonInstance.Start() returned unexpected error: %v", err)
+					// Use non-blocking send in case channel is not listened to
+					select {
+					case startErrChan <- fmt.Errorf("daemon.Start() exited unexpectedly: %w", err):
+					default:
+					}
+				}
+			} else if err != nil {
+				t.Logf("Test: Listener Goroutine: daemonInstance.Start() returned expected closure error: %v", err)
+			} else {
+				t.Log("Test: Listener Goroutine: daemonInstance.Start() returned nil error.")
+			}
+		}()
+
+		// Wait briefly for startup or error
+		select {
+		case err := <-startErrChan:
+			// Cannot call t.Fatal in goroutine. Panic will be caught by test runner.
+			panic(fmt.Sprintf("Test: Main App Goroutine: Daemon startup failed: %v", err))
+		case <-time.After(200 * time.Millisecond): // Allow time for Start() to listen
+			t.Log("Test: Main App Goroutine: Assumed daemon started successfully.")
+		}
+
+		// This is the key part: wait for the context to be cancelled.
+		// This should happen when d.Stop() calls d.cancelCtx() via the STOP command.
+		t.Log("Test: Main App Goroutine: Waiting on appCtx.Done()...")
+		<-appCtx.Done() // BLOCK until context is cancelled
+
+		t.Log("Test: Main App Goroutine: appCtx.Done() unblocked.")
+
+		// Optional: Mimic cmd_start.go's explicit call after signal/cancel
+		// daemonInstance.Stop() // stopOnce prevents re-entry
+
+		// Wait for the listener goroutine (running Start()) to fully exit cleanly.
+		// Use a timeout here too, in case Stop() hangs internally.
+		t.Log("Test: Main App Goroutine: Waiting for listener goroutine to exit...")
+		select {
+		case <-listenerExited:
+			t.Log("Test: Main App Goroutine: Listener goroutine confirmed exited.")
+		case <-time.After(cfg.ShutdownTimeout + 200*time.Millisecond): // Slightly more than shutdown timeout
+			t.Log("Test: Main App Goroutine: Timeout waiting for listener goroutine to exit.")
+			// If this happens, Stop() might be stuck in wg.Wait()
+			panic("Timeout waiting for listener goroutine to finish after context cancellation")
+		}
+
+	}() // End of "Main Application" Goroutine
+
+	// 3. Wait for Daemon to be Ready (Connect to socket)
+	var conn net.Conn
+	var err error
+	require.Eventually(t, func() bool {
+		conn, err = net.DialTimeout("unix", socketPath, 100*time.Millisecond)
+		if err == nil {
+			t.Logf("Test: Successfully connected to daemon socket: %s", socketPath)
+			return true
+		}
+		return false
+	}, 2*time.Second, 100*time.Millisecond, "Failed to connect to daemon socket %q after waiting", socketPath)
+	defer conn.Close()
+
+	// Optional: Send PING to confirm responsiveness
+	t.Log("Test: Sending PING command...")
+	_, err = conn.Write([]byte("PING\n"))
+	require.NoError(t, err, "Failed to write PING command")
+	reader := bufio.NewReader(conn)
+	// Set read deadline
+	err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	require.NoError(t, err)
+	response, err := reader.ReadString('\n')
+	require.NoError(t, err, "Failed to read PING response")
+	assert.Equal(t, "PONG\n", response, "Did not receive PONG")
+	t.Logf("Test: Received PONG response.")
+	// Reset read deadline
+	err = conn.SetReadDeadline(time.Time{})
+	require.NoError(t, err)
+
+	// 4. Simulate 'echoy stop' -> Send STOP command
+	t.Log("Test: Sending STOP command...")
+	_, err = conn.Write([]byte("STOP\n"))
+	require.NoError(t, err, "Failed to write STOP command")
+
+	// Optional: Read the "OK: Daemon stop initiated." response
+	err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	require.NoError(t, err)
+	response, err = reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) { // EOF is okay, daemon might close connection fast
+		require.NoError(t, err, "Failed to read STOP response")
+	}
+	if err == nil { // Only check response if we actually read one
+		assert.Equal(t, "OK: Daemon stop initiated.\n", response, "Did not receive correct STOP ack")
+		t.Logf("Test: Received STOP acknowledgment.")
+	} else {
+		t.Logf("Test: Connection closed (EOF) after sending STOP (acceptable).")
+	}
+	// Close our client connection explicitly now
+	conn.Close()
+
+	// 5. Verify Termination: Wait for the main application goroutine to finish
+	t.Log("Test: Waiting for main application goroutine to finish...")
+	select {
+	case <-mainRoutineFinished:
+		t.Log("Test: Main application goroutine finished cleanly after STOP command.")
+		// SUCCESS!
+	case <-time.After(cfg.ShutdownTimeout + 1*time.Second): // Timeout >> ShutdownTimeout
+		t.Fatal("Timeout waiting for main application goroutine to finish after STOP command was sent")
+	}
+
+	// Final check: Socket file should be gone (Stop() removes it)
+	// Poll for a short period to allow the async Stop() goroutine to finish file removal.
+	t.Log("Test: Verifying socket file is removed (polling)...")
+	require.Eventually(t, func() bool {
+		_, _, err := fileExists(socketPath) // Or directly use os.Stat
+		// Succeed when the error indicates the file doesn't exist
+		return errors.Is(err, os.ErrNotExist)
+	}, 5*time.Second, 50*time.Millisecond, "Socket file %q was not removed after shutdown", socketPath)
+	t.Log("Test: Socket file correctly removed.")
 }
