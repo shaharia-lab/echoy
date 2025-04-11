@@ -1000,7 +1000,7 @@ func TestStopCommandTerminatesDaemon(t *testing.T) {
 	if err != nil && !errors.Is(err, io.EOF) { // EOF is okay, daemon might close connection fast
 		require.NoError(t, err, "Failed to read STOP response")
 	}
-	if err == nil { // Only check response if we actually read one
+	if err == nil {
 		assert.Equal(t, "OK: Daemon stop initiated.\n", response, "Did not receive correct STOP ack")
 		t.Logf("Test: Received STOP acknowledgment.")
 	} else {
@@ -1009,13 +1009,12 @@ func TestStopCommandTerminatesDaemon(t *testing.T) {
 	// Close our client connection explicitly now
 	conn.Close()
 
-	// 5. Verify Termination: Wait for the main application goroutine to finish
+	//erify Termination: Wait for the main application goroutine to finish
 	t.Log("Test: Waiting for main application goroutine to finish...")
 	select {
 	case <-mainRoutineFinished:
 		t.Log("Test: Main application goroutine finished cleanly after STOP command.")
-		// SUCCESS!
-	case <-time.After(cfg.ShutdownTimeout + 1*time.Second): // Timeout >> ShutdownTimeout
+	case <-time.After(cfg.ShutdownTimeout + 1*time.Second):
 		t.Fatal("Timeout waiting for main application goroutine to finish after STOP command was sent")
 	}
 
@@ -1023,8 +1022,7 @@ func TestStopCommandTerminatesDaemon(t *testing.T) {
 	// Poll for a short period to allow the async Stop() goroutine to finish file removal.
 	t.Log("Test: Verifying socket file is removed (polling)...")
 	require.Eventually(t, func() bool {
-		_, _, err := fileExists(socketPath) // Or directly use os.Stat
-		// Succeed when the error indicates the file doesn't exist
+		_, err := os.Stat(socketPath)
 		return errors.Is(err, os.ErrNotExist)
 	}, 5*time.Second, 50*time.Millisecond, "Socket file %q was not removed after shutdown", socketPath)
 	t.Log("Test: Socket file correctly removed.")
