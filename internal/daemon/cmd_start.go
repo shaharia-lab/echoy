@@ -160,15 +160,15 @@ func NewStartCmd(container *cli.Container, appConf config.Config, appConfig *con
 				MaxConnections:     100,
 			}
 
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
 			daemonInstance := NewDaemon(daemonCfg, daemonLog)
+			daemonInstance.SetCancelFunc(stop)
 
 			daemonInstance.RegisterCommand("PING", DefaultPingHandler)
 			daemonInstance.RegisterCommand("STATUS", MakeDefaultStatusHandler(daemonInstance))
 			daemonInstance.RegisterCommand("STOP", MakeDefaultStopHandler(daemonInstance))
 			daemonInstance.RegisterCommand("WEBSERVER", webSrvr.DaemonCommandHandler())
-
-			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-			defer stop()
 
 			errChan := make(chan error, 1)
 			daemonStopped := make(chan struct{})

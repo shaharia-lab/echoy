@@ -10,10 +10,8 @@ import (
 	"io"
 	"net"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode"
 )
@@ -41,6 +39,7 @@ type Daemon struct {
 	commands    map[string]types.CommandFunc
 	cmdMu       sync.RWMutex
 	logger      logger.Logger
+	cancelCtx   context.CancelFunc
 }
 
 const defaultReaderSize = 4096
@@ -73,6 +72,10 @@ func NewDaemon(cfg Config, logger logger.Logger) *Daemon {
 	}
 
 	return d
+}
+
+func (d *Daemon) SetCancelFunc(cancelFunc context.CancelFunc) {
+	d.cancelCtx = cancelFunc
 }
 
 // RegisterCommand adds or replaces a command handler. Not safe for concurrent use after Start().
@@ -126,10 +129,6 @@ func (d *Daemon) Start() error {
 
 	d.logger.Info("Daemon starting listener loop", "socket", d.config.SocketPath)
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go d.handleSignals(sigChan)
-
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
@@ -145,6 +144,14 @@ func (d *Daemon) Start() error {
 func (d *Daemon) Stop() {
 	d.stopOnce.Do(func() {
 		d.logger.Info("Initiating daemon shutdown...")
+
+		if d.cancelCtx != nil {
+			d.logger.Debug("Calling main context cancel function.")
+			d.cancelCtx()
+		} else {
+			d.logger.Warn("Main context cancel function is nil.")
+		}
+
 		close(d.stopChan)
 
 		if d.listener != nil {
@@ -445,11 +452,4 @@ func (d *Daemon) writeResponse(conn net.Conn, response string, remoteAddr string
 	d.logger.WithFields(logFields).Debug("Successfully wrote response")
 
 	return nil
-}
-
-func (d *Daemon) handleSignals(sigChan chan os.Signal) {
-	sig := <-sigChan
-	d.logger.Info("Received OS signal, initiating shutdown...", "signal", sig)
-	signal.Stop(sigChan)
-	go d.Stop()
 }
