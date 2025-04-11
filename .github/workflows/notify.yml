@@ -16,7 +16,7 @@ jobs:
           args: |
             🚀 **New Release Available!** 🚀
             
-            Repository: **${{ github.repository }}**
+            Repository: **https://github.com/${{ github.repository }}**
             Version: **${{ github.event.release.tag_name }}**
             
             ${{ github.event.release.name }}
