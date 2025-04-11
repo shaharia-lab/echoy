@@ -8,11 +8,13 @@ import (
 	"github.com/shaharia-lab/echoy/internal/chat"
 	"github.com/shaharia-lab/echoy/internal/llm"
 	"github.com/shaharia-lab/echoy/internal/tools"
+	"github.com/shaharia-lab/echoy/internal/types"
 	"github.com/shaharia-lab/echoy/internal/webui"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,6 +36,10 @@ type WebServer struct {
 	llmHandler         *llm.LLMHandler
 	chatHandler        *chat.ChatHandler
 	frontendDownloader webui.FrontendDownloader
+}
+
+func (ws *WebServer) Name() string {
+	return "webserver"
 }
 
 // NewWebServer creates a new WebServer instance with the specified API port
@@ -66,11 +72,6 @@ func NewWebServer(
 		chatHandler:        chatHandler,
 		frontendDownloader: frontendDownloader,
 	}
-}
-
-// Router returns the chi router to allow adding routes from outside
-func (ws *WebServer) Router() *chi.Mux {
-	return ws.router
 }
 
 // setupRoutes configures the default routes
@@ -177,4 +178,32 @@ func (ws *WebServer) Stop(ctx context.Context) error {
 	ws.server = nil
 
 	return err
+}
+
+// DaemonCommandHandler returns a CommandFunc that starts the web server
+func (ws *WebServer) DaemonCommandHandler() types.CommandFunc {
+	return func(ctx context.Context, args []string) (string, error) {
+		if len(args) == 0 {
+			return "", fmt.Errorf("missing subcommand: please specify 'start' or 'stop'")
+		}
+
+		subcommand := strings.ToLower(args[0])
+
+		switch subcommand {
+		case "start":
+			if err := ws.Start(); err != nil {
+				return "", fmt.Errorf("failed to start web server: %w", err)
+			}
+			return fmt.Sprintf("Web server started successfully on port %s", ws.APIPort), nil
+
+		case "stop":
+			if err := ws.Stop(ctx); err != nil {
+				return "", fmt.Errorf("failed to stop web server: %w", err)
+			}
+			return "Web server stopped successfully", nil
+
+		default:
+			return "", fmt.Errorf("unknown subcommand '%s': valid subcommands are 'start', 'stop', and 'status'", subcommand)
+		}
+	}
 }

@@ -15,7 +15,7 @@ type Container struct {
 	Config         *config.AppConfig
 	Filesystem     *filesystem.Filesystem
 	Paths          map[filesystem.PathType]string
-	Logger         *logger.Logger
+	Logger         logger.Logger
 	ThemeMgr       *theme.Manager
 	Initializer    *initializer.Initializer
 	ConfigFromFile config.Config
@@ -27,7 +27,7 @@ type InitOptions struct {
 	Version  string
 	Commit   string
 	Date     string
-	LogLevel logger.LogLevel
+	LogLevel logger.Level
 	Theme    theme.Theme
 }
 
@@ -38,7 +38,7 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	defer func() {
 		if container.Logger != nil {
-			defer container.Logger.Sync()
+			defer container.Logger.Flush()
 		}
 	}()
 
@@ -77,23 +77,26 @@ func NewContainer(opts InitOptions) (*Container, error) {
 
 	container.Config.SystemConfig = systemConfig
 
-	loggerConfig := logger.Config{
-		FilePath:  container.Paths[filesystem.LogsFilePath],
-		LogLevel:  logger.DebugLevel,
-		MaxSizeMB: logger.DefaultMaxSizeMB,
-	}
-	zapLogger, err := logger.BuildZapLogger(loggerConfig)
+	log, err := logger.NewZapLogger(logger.Config{
+		LogLevel:    logger.DebugLevel,
+		UseConsole:  true,
+		Development: true,
+
+		LogFilePath: fmt.Sprintf("%s/echoy.log", container.Paths[filesystem.LogsDirectory]),
+
+		MaxSizeMB:  50,
+		MaxAgeDays: 14,
+		MaxBackups: 5,
+	})
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
 	}
-	container.Logger, err = logger.NewLogger(loggerConfig, zapLogger)
-	if err != nil {
-		return container, fmt.Errorf("failed to initialize logger: %w", err)
-	}
+
+	container.Logger = log
 
 	container.ConfigFromFile, err = initializer.NewDefaultConfigManager(container.Paths[filesystem.ConfigFilePath]).LoadConfig()
 	if err != nil {
-		container.Logger.Errorf(fmt.Sprintf("error loading configuration: %v", err))
+		container.Logger.WithField(logger.ErrorKey, err).Error("error loading configuration")
 		return container, fmt.Errorf("error loading configuration: %w", err)
 	}
 
