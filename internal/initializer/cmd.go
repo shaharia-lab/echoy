@@ -12,7 +12,7 @@ import (
 )
 
 // NewCmd creates an interactive init command
-func NewCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
+func NewCmd(config config.Config, appConfig *config.AppConfig, logger logger.Logger, themeManager *theme.Manager, initializer *Initializer) *cobra.Command {
 	cmd := &cobra.Command{
 		Version: appConfig.Version.VersionText(),
 		Use:     "init",
@@ -30,10 +30,10 @@ func NewCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Lo
 			}
 
 			logger.Info("Starting initialization...")
-			defer logger.Sync()
+			defer logger.Flush()
 
 			if err := initializer.Run(); err != nil {
-				logger.Error(fmt.Sprintf("Initialization failed: %v", err))
+				logger.Errorf("Initialization failed: %v", err)
 				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Initialization failed: %v", err))
 				return err
 			}

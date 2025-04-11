@@ -15,7 +15,7 @@ import (
 )
 
 // NewStatusCmd creates a command to check the daemon status
-func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
+func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger logger.Logger, themeManager *theme.Manager, socketPath string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Check the status of the Echoy daemon",
@@ -32,7 +32,7 @@ func NewStatusCmd(config config.Config, appConfig *config.AppConfig, logger *log
 			}
 
 			logger.Info("Checking daemon status...")
-			defer logger.Sync()
+			defer logger.Flush()
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 

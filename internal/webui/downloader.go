@@ -49,11 +49,11 @@ type asset struct {
 type FrontendGitHubReleaseDownloader struct {
 	DestinationDirectory string
 	httpClient           HTTPClient
-	logger               *logger.Logger
+	logger               logger.Logger
 }
 
 // NewFrontendGitHubReleaseDownloader creates a new instance of FrontendGitHubReleaseDownloader.
-func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient HTTPClient, logger *logger.Logger) *FrontendGitHubReleaseDownloader {
+func NewFrontendGitHubReleaseDownloader(destinationDirectory string, httpClient HTTPClient, logger logger.Logger) *FrontendGitHubReleaseDownloader {
 	return &FrontendGitHubReleaseDownloader{
 		DestinationDirectory: destinationDirectory,
 		httpClient:           httpClient,
@@ -90,7 +90,7 @@ func (d *FrontendGitHubReleaseDownloader) DownloadFrontend(version string) error
 		"destination_directory": d.DestinationDirectory,
 		"version":               version,
 		"download_url":          downloadURL,
-	}).Info("Frontend assets downloaded and extracted successfully")
+	}).Info("Frontend assets downloaded and extracted successfully", nil)
 
 	return nil
 }

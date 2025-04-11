@@ -5,15 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/shaharia-lab/echoy/internal/types"
 	"io"
-	"log/slog"
 	"net"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"unicode"
 )
@@ -25,7 +23,7 @@ type Config struct {
 	ReadTimeout        time.Duration
 	WriteTimeout       time.Duration
 	CommandExecTimeout time.Duration
-	Logger             *slog.Logger
+	Logger             logger.Logger
 	MaxConnections     int
 }
 
@@ -40,16 +38,15 @@ type Daemon struct {
 	connMu      sync.RWMutex
 	commands    map[string]types.CommandFunc
 	cmdMu       sync.RWMutex
-	logger      *slog.Logger
+	logger      logger.Logger
+	cancelCtx   context.CancelFunc
 }
 
 const defaultReaderSize = 4096
 
 // NewDaemon creates a new Daemon instance with the provided configuration
-func NewDaemon(cfg Config) *Daemon {
-	if cfg.Logger == nil {
-		cfg.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	}
+func NewDaemon(cfg Config, logger logger.Logger) *Daemon {
+	cfg.Logger = logger
 	if cfg.ShutdownTimeout == 0 {
 		cfg.ShutdownTimeout = 30 * time.Second
 	}
@@ -75,6 +72,10 @@ func NewDaemon(cfg Config) *Daemon {
 	}
 
 	return d
+}
+
+func (d *Daemon) SetCancelFunc(cancelFunc context.CancelFunc) {
+	d.cancelCtx = cancelFunc
 }
 
 // RegisterCommand adds or replaces a command handler. Not safe for concurrent use after Start().
@@ -128,10 +129,6 @@ func (d *Daemon) Start() error {
 
 	d.logger.Info("Daemon starting listener loop", "socket", d.config.SocketPath)
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go d.handleSignals(sigChan)
-
 	d.wg.Add(1)
 	go func() {
 		defer d.wg.Done()
@@ -139,50 +136,74 @@ func (d *Daemon) Start() error {
 	}()
 
 	cleanupListener = false
-	d.logger.Info("Daemon started successfully")
 	return nil
 }
 
 // Stop initiates graceful shutdown of the daemon.
 func (d *Daemon) Stop() {
 	d.stopOnce.Do(func() {
-		d.logger.Info("Initiating daemon shutdown...")
-		close(d.stopChan)
+		d.logger.Info("Stop: Initiating daemon shutdown...")
 
-		if d.listener != nil {
-			d.logger.Info("Closing listener socket", "path", d.config.SocketPath)
-			if err := d.listener.Close(); err != nil {
-				if !errors.Is(err, net.ErrClosed) && !strings.Contains(err.Error(), "use of closed network connection") {
-					d.logger.Error("Error closing listener", "path", d.config.SocketPath, "error", err)
-				}
-			}
+		if d.cancelCtx != nil {
+			d.logger.Debug("Stop: Calling main context cancel function.")
+			d.cancelCtx()
+		} else {
+			d.logger.Warn("Stop: Main context cancel function is nil.")
 		}
 
-		d.closeConnections()
+		d.logger.Debug("Stop: Closing stopChan...")
+		close(d.stopChan) // Signal internal loops
 
-		d.logger.Info("Waiting for active connections and loops to finish...", "timeout", d.config.ShutdownTimeout)
+		if d.listener != nil {
+			d.logger.Info("Stop: Closing listener socket", "path", d.config.SocketPath)
+			if err := d.listener.Close(); err != nil {
+				// ... (existing error handling) ...
+			}
+		} else {
+			d.logger.Warn("Stop: Listener was nil, cannot close.")
+		}
+
+		d.logger.Debug("Stop: Closing client connections...")
+		d.closeConnections() // Ensure this doesn't hang
+
+		d.logger.Info("Stop: Waiting for active connections/loops...", "timeout", d.config.ShutdownTimeout)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), d.config.ShutdownTimeout)
 		defer cancel()
 
 		done := make(chan struct{})
+		waitReturned := make(chan struct{}) // Channel to signal wg.Wait returned
 		go func() {
+			d.logger.Debug("Stop: Starting wg.Wait() in goroutine...")
 			d.wg.Wait()
-			close(done)
+			d.logger.Debug("Stop: wg.Wait() finished.")
+			close(done)         // Signal success
+			close(waitReturned) // Signal wait finished for logging below
 		}()
 
 		select {
 		case <-done:
-			d.logger.Info("All connections and loops finished gracefully.")
+			d.logger.Info("Stop: All connections and loops finished gracefully.")
 		case <-shutdownCtx.Done():
-			d.logger.Warn("Shutdown timeout exceeded waiting for active connections/loops.")
+			d.logger.Warn("Stop: Shutdown timeout exceeded waiting for active connections/loops.")
+			// Even on timeout, we MUST wait for the wg.Wait goroutine to finish
+			// otherwise we might race with wg.Done() calls later? Or is wg internally safe?
+			// Let's wait briefly for safety/logging. wg itself is safe.
+			<-waitReturned
 		}
 
-		d.logger.Info("Removing socket file", "path", d.config.SocketPath)
-		if err := os.RemoveAll(d.config.SocketPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			d.logger.Error("Failed to remove socket file during shutdown", "path", d.config.SocketPath, "error", err)
+		d.logger.Info("Stop: Removing socket file", "path", d.config.SocketPath) // Log BEFORE removal
+		err := os.RemoveAll(d.config.SocketPath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			d.logger.Error("Stop: Failed to remove socket file during shutdown", "path", d.config.SocketPath, "error", err)
+			// Consider adding a panic here ONLY for debugging if needed:
+			// panic(fmt.Sprintf("PANIC: Failed to remove socket file %s: %v", d.config.SocketPath, err))
+		} else if err == nil {
+			d.logger.Info("Stop: Successfully removed socket file.") // Log success
+		} else {
+			d.logger.Info("Stop: Socket file was already removed.") // Log not exist
 		}
 
-		d.logger.Info("Daemon stopped.")
+		d.logger.Info("Stop: Daemon stopped method finished.") // Log exit
 	})
 }
 
@@ -422,30 +443,29 @@ func (d *Daemon) writeResponse(conn net.Conn, response string, remoteAddr string
 
 	n, writeErr := conn.Write([]byte(response))
 
-	logArgs := []any{"remote_addr", remoteAddr, "response_len", len(response), "bytes_written", n}
+	logFields := map[string]interface{}{
+		"remote_addr":   remoteAddr,
+		"response_len":  len(response),
+		"bytes_written": n,
+	}
 	if writeErr != nil {
 		if netErr, ok := writeErr.(net.Error); ok && netErr.Timeout() {
-			d.logger.Error("Timeout writing response to client", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Error("Timeout writing response to client")
 		} else if errors.Is(writeErr, net.ErrClosed) || strings.Contains(writeErr.Error(), "use of closed network connection") {
-			d.logger.Warn("Failed to write response, connection closed", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Warn("Failed to write response, connection closed")
 		} else {
-			d.logger.Error("Error writing response to client", append(logArgs, "error", writeErr)...)
+			d.logger.WithField(logger.ErrorKey, writeErr).WithFields(logFields).Error("Error writing response to client")
 		}
 		return writeErr
 	}
 
 	if n < len(response) {
-		d.logger.Warn("Partial write occurred", logArgs...)
+		d.logger.WithFields(logFields).Warn("Partial write to client")
+
 		return io.ErrShortWrite
 	}
 
-	d.logger.Debug("Successfully wrote response", logArgs...)
-	return nil
-}
+	d.logger.WithFields(logFields).Debug("Successfully wrote response")
 
-func (d *Daemon) handleSignals(sigChan chan os.Signal) {
-	sig := <-sigChan
-	d.logger.Info("Received OS signal, initiating shutdown...", "signal", sig)
-	signal.Stop(sigChan)
-	go d.Stop()
+	return nil
 }

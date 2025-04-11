@@ -3,29 +3,37 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/shaharia-lab/echoy/internal/cli"
 	"github.com/shaharia-lab/echoy/internal/daemon"
-	"github.com/shaharia-lab/echoy/internal/theme"
+	"github.com/shaharia-lab/echoy/internal/logger"
 	"github.com/spf13/cobra"
-	"log/slog"
 	"strings"
 	"time"
 )
 
 // NewWebserverCmd creates a command to manage the webserver through the daemon
-func NewWebserverCmd(socketPath string, themeManager *theme.Manager, sLogger *slog.Logger) *cobra.Command {
+func NewWebserverCmd(container *cli.Container) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "webserver [start|stop]",
 		Short: "Manage the Echoy web server",
 		Long:  `Start or stop the Echoy web server through the daemon.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			defer container.Logger.Flush()
+
 			subcommand := strings.ToLower(args[0])
 			if subcommand != "start" && subcommand != "stop" {
+				container.Logger.WithFields(map[string]interface{}{
+					logger.ErrorKey: fmt.Errorf("invalid subcommand: %s", subcommand),
+					"command":       "webserver",
+					"subcommand":    subcommand,
+				}).Error("invalid subcommand")
+
 				return fmt.Errorf("invalid subcommand: %s (must be 'start' or 'stop')", subcommand)
 			}
 
 			provider := &daemon.UnixSocketProvider{
-				SocketPath: socketPath,
+				SocketPath: container.SocketFilePath,
 				Timeout:    500 * time.Millisecond,
 			}
 			client := daemon.NewClient(provider, 2*time.Second, 5*time.Second)
@@ -37,13 +45,24 @@ func NewWebserverCmd(socketPath string, themeManager *theme.Manager, sLogger *sl
 			if err != nil {
 				if isConnectionError(err) {
 					msg := "Daemon is not running. Please start the daemon first with 'echoy start'"
-					sLogger.Error(msg, "error", err)
-					themeManager.GetCurrentTheme().Error().Println(msg)
+
+					container.Logger.WithFields(map[string]interface{}{
+						logger.ErrorKey: err,
+						"command":       "webserver",
+						"subcommand":    subcommand,
+					}).Error("webserver command failed because the daemon is not running")
+
+					container.ThemeMgr.GetCurrentTheme().Error().Println(msg)
 					return fmt.Errorf("daemon is not running")
 				}
 
-				sLogger.Error("Failed to execute webserver command", "subcommand", subcommand, "error", err)
-				themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to %s webserver: %v", subcommand, err))
+				container.Logger.WithFields(map[string]interface{}{
+					logger.ErrorKey: err,
+					"command":       "webserver",
+					"subcommand":    subcommand,
+				}).Error("failed to execute webserver command")
+
+				container.ThemeMgr.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to %s webserver: %v", subcommand, err))
 				return fmt.Errorf("failed to %s webserver: %w", subcommand, err)
 			}
 
@@ -52,8 +71,13 @@ func NewWebserverCmd(socketPath string, themeManager *theme.Manager, sLogger *sl
 				response = strings.TrimPrefix(response, "OK: ")
 			}
 
-			sLogger.Info(fmt.Sprintf("Webserver %s command executed", subcommand), "response", response)
-			themeManager.GetCurrentTheme().Success().Println(response)
+			container.Logger.WithFields(map[string]interface{}{
+				"command":    "webserver",
+				"subcommand": subcommand,
+				"response":   response,
+			}).Info("Webserver command executed")
+
+			container.ThemeMgr.GetCurrentTheme().Success().Println(response)
 			return nil
 		},
 	}

@@ -16,14 +16,27 @@ import (
 )
 
 // BuildWebserver initializes the web server with the provided configuration and dependencies
-func BuildWebserver(config config.Config, themeManager *theme.Manager, webUIStaticDirectory string, logger *logger.Logger) (*WebServer, error) {
+func BuildWebserver(config config.Config, themeManager *theme.Manager, webUIStaticDirectory string, logDirectory string) (*WebServer, error) {
+	serverLogger, err := logger.NewZapLogger(logger.Config{
+		LogLevel:    logger.DebugLevel,
+		LogFilePath: fmt.Sprintf("%s/webserver.log", logDirectory),
+
+		MaxSizeMB:  50,
+		MaxAgeDays: 14,
+		MaxBackups: 5,
+	})
+	if err != nil {
+		themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to initialize webserver logger: %v", err))
+		return nil, fmt.Errorf("failed to initialize webserver logger: %w", err)
+	}
+
 	ts := []mcp.Tool{
 		mcpTools.GetWeather,
 	}
 
 	llmService, err := llm.NewLLMService(config.LLM)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create LLM service: %v", err))
+		serverLogger.Errorf("Failed to create LLM service: %v", err)
 		themeManager.GetCurrentTheme().Error().Println(fmt.Sprintf("Failed to create LLM service: %v", err))
 		return nil, err
 	}
@@ -44,6 +57,6 @@ func BuildWebserver(config config.Config, themeManager *theme.Manager, webUIStat
 		tools.NewProvider(ts),
 		llm.NewLLMHandler(llm.GetSupportedLLMProviders()),
 		chatHandler,
-		webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, logger),
+		webui.NewFrontendGitHubReleaseDownloader(webUIStaticDirectory, webUIDownloaderHttpClient, serverLogger),
 	), nil
 }
