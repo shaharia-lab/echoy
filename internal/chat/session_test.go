@@ -45,7 +45,7 @@ func setupTestSession(t *testing.T) (*Session, *chatMock.MockService, *chatMock.
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 	session := &Session{
 		config:             mockConfig,
 		theme:              mockTheme,
@@ -66,10 +66,10 @@ func TestNewChatSession(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 	mockHistoryService.EXPECT().
 		CreateChat(mock.Anything).
-		Return(&goai.ChatHistory{UUID: sessionUUID}, nil)
+		Return(&goai.ChatHistory{SessionID: sessionUUID}, nil)
 
 	session, err := NewChatSession(mockConfig, mockTheme, mockChatService, mockHistoryService)
 
@@ -107,7 +107,7 @@ func TestProcessMessage(t *testing.T) {
 	ctx := context.Background()
 	input := "test input"
 	response := types.ChatResponse{
-		ChatUUID:    uuid.UUID{},
+		ChatUUID:    uuid.UUID{}.String(),
 		Answer:      "test response",
 		InputToken:  0,
 		OutputToken: 0,
@@ -137,7 +137,7 @@ func TestProcessMessage_Error(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 	session := &Session{
 		config:             mockConfig,
 		theme:              mockTheme,
@@ -170,7 +170,7 @@ func TestProcessMessageStreaming(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 
 	var thinkingMutex sync.Mutex
 	thinkingCalled := false
@@ -242,7 +242,7 @@ func TestProcessMessageStreaming_InitialError(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 
 	session := &Session{
 		config:             mockConfig,
@@ -324,7 +324,7 @@ func TestStart_StreamingEnabled(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 
 	mockInput := "Hello\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))
@@ -402,7 +402,7 @@ func TestStart_NoStreaming(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 
 	mockInput := "Hello\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))
@@ -464,7 +464,7 @@ func TestStart_ClearCommand(t *testing.T) {
 	mockChatService := chatMock.NewMockService(t)
 	mockHistoryService := chatMock.NewMockHistoryService(t)
 
-	sessionUUID := uuid.New()
+	sessionUUID := uuid.New().String()
 
 	mockInput := "clear\n\nexit\n"
 	mockReader := bufio.NewReader(strings.NewReader(mockInput))

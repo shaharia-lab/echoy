@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/shaharia-lab/echoy/internal/chat/types"
 	"github.com/shaharia-lab/goai"
 	"log"
@@ -32,8 +31,8 @@ func (h *ChatHandler) HandleChatRequest() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		var chatSessionID uuid.UUID
-		if req.ChatUUID != uuid.Nil {
+		var chatSessionID string
+		if req.ChatUUID != "" {
 			chatSessionID = req.ChatUUID
 		}
 
@@ -62,8 +61,8 @@ func (h *ChatHandler) HandleChatStreamRequest() http.HandlerFunc {
 
 		ctx := r.Context()
 
-		var chatSessionID uuid.UUID
-		if req.ChatUUID != uuid.Nil {
+		var chatSessionID string
+		if req.ChatUUID != "" {
 			chatSessionID = req.ChatUUID
 		}
 
@@ -74,8 +73,8 @@ func (h *ChatHandler) HandleChatStreamRequest() http.HandlerFunc {
 		w.Header().Set("X-Accel-Buffering", "no")
 		w.Header().Set("Transfer-Encoding", "chunked")
 
-		if chatSessionID != uuid.Nil {
-			w.Header().Set("X-MKit-Chat-UUID", chatSessionID.String())
+		if chatSessionID != "" {
+			w.Header().Set("X-MKit-Chat-UUID", chatSessionID)
 		}
 
 		flusher, ok := w.(http.Flusher)
@@ -161,16 +160,9 @@ func (h *ChatHandler) HandleChatByIDRequest() http.HandlerFunc {
 			return
 		}
 
-		// Parse the provided Chat ID as UUID
-		parsedChatUUID, err := uuid.Parse(chatUUID)
-		if err != nil {
-			http.Error(w, `{"error": "Invalid chat ID"}`, http.StatusBadRequest)
-			return
-		}
-
 		ctx := r.Context()
 
-		chatHistory, err := h.ChatService.GetChatHistory(ctx, parsedChatUUID)
+		chatHistory, err := h.ChatService.GetChatHistory(ctx, chatUUID)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("failed to get chat by ID: %v", err), http.StatusInternalServerError)
 			return
