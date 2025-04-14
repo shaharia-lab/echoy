@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"strings"
 	"time"
@@ -20,7 +19,7 @@ type Session struct {
 	theme                 theme.Theme
 	chatService           Service
 	chatHistoryStorage    goai.ChatHistoryStorage
-	sessionID             uuid.UUID
+	sessionID             string
 	reader                *bufio.Reader
 	chatHistoryService    HistoryService
 	thinkingAnimationFunc func(theme theme.Theme, thinking chan bool)
@@ -40,7 +39,7 @@ func NewChatSession(config *config.Config, theme theme.Theme, chatService Servic
 		theme:                 theme,
 		chatService:           chatService,
 		chatHistoryService:    chatHistoryService,
-		sessionID:             sessionID.UUID,
+		sessionID:             sessionID.SessionID,
 		reader:                bufio.NewReader(os.Stdin),
 		thinkingAnimationFunc: showThinkingAnimation,
 	}, nil

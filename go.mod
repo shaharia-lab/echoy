@@ -12,7 +12,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/openai/openai-go v0.1.0-alpha.61
 	github.com/rhysd/go-github-selfupdate v1.2.3
-	github.com/shaharia-lab/goai v0.13.0
+	github.com/shaharia-lab/goai v0.16.0
 	github.com/shaharia-lab/mcp-tools v0.0.5
 	github.com/shaharia-lab/telemetry-collector v0.0.1
 	github.com/sirupsen/logrus v1.9.3
@@ -48,6 +48,7 @@ require (
 	github.com/google/s2a-go v0.1.8 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.0 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
@@ -57,6 +58,7 @@ require (
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/pgvector/pgvector-go v0.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/slack-go/slack v0.16.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tcnksm/go-gitconfig v0.1.2 // indirect

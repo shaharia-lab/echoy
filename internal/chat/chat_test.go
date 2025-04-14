@@ -16,7 +16,7 @@ import (
 func TestServiceImpl_Chat(t *testing.T) {
 	testCases := []struct {
 		name                  string
-		sessionID             uuid.UUID
+		sessionID             string
 		userMessage           string
 		mockLLMResponse       goai.LLMResponse
 		mockLLMError          error
@@ -26,28 +26,28 @@ func TestServiceImpl_Chat(t *testing.T) {
 	}{
 		{
 			name:            "successful chat",
-			sessionID:       uuid.New(),
+			sessionID:       uuid.New().String(),
 			userMessage:     "Hello, how are you?",
 			mockLLMResponse: goai.LLMResponse{Text: "I'm doing well, thank you!"},
 			mockLLMError:    nil,
 		},
 		{
 			name:             "error adding user message",
-			sessionID:        uuid.New(),
+			sessionID:        uuid.New().String(),
 			userMessage:      "Hello",
 			mockAddUserError: errors.New("failed to add user message"),
 			expectedError:    true,
 		},
 		{
 			name:          "error generating LLM response",
-			sessionID:     uuid.New(),
+			sessionID:     uuid.New().String(),
 			userMessage:   "Hello",
 			mockLLMError:  errors.New("LLM service error"),
 			expectedError: true,
 		},
 		{
 			name:                  "error adding assistant response",
-			sessionID:             uuid.New(),
+			sessionID:             uuid.New().String(),
 			userMessage:           "Hello",
 			mockLLMResponse:       goai.LLMResponse{Text: "Response"},
 			mockAddAssistantError: errors.New("failed to add assistant message"),
@@ -105,7 +105,7 @@ func TestServiceImpl_Chat(t *testing.T) {
 func TestServiceImpl_ChatStreaming(t *testing.T) {
 	testCases := []struct {
 		name             string
-		sessionID        uuid.UUID
+		sessionID        string
 		userMessage      string
 		mockAddUserError error
 		mockStreamError  error
@@ -113,20 +113,20 @@ func TestServiceImpl_ChatStreaming(t *testing.T) {
 	}{
 		{
 			name:            "successful chat streaming",
-			sessionID:       uuid.New(),
+			sessionID:       uuid.New().String(),
 			userMessage:     "Hello, how are you?",
 			mockStreamError: nil,
 		},
 		{
 			name:             "error adding user message",
-			sessionID:        uuid.New(),
+			sessionID:        uuid.New().String(),
 			userMessage:      "Hello",
 			mockAddUserError: errors.New("failed to add user message"),
 			expectedError:    true,
 		},
 		{
 			name:            "error generating streaming response",
-			sessionID:       uuid.New(),
+			sessionID:       uuid.New().String(),
 			userMessage:     "Hello",
 			mockStreamError: errors.New("streaming service error"),
 			expectedError:   true,
@@ -237,7 +237,7 @@ func TestProcessStreamingResponse(t *testing.T) {
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()
-		sessionID := uuid.New()
+		sessionID := uuid.New().String()
 
 		respChan := make(chan goai.StreamingLLMResponse, 3)
 
@@ -263,7 +263,7 @@ func TestProcessStreamingResponse(t *testing.T) {
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()
-		sessionID := uuid.New()
+		sessionID := uuid.New().String()
 
 		respChan := make(chan goai.StreamingLLMResponse, 4)
 
@@ -289,7 +289,7 @@ func TestProcessStreamingResponse(t *testing.T) {
 		chatService := NewChatService(mockLLMService, mockHistoryService)
 
 		ctx := context.Background()
-		sessionID := uuid.New()
+		sessionID := uuid.New().String()
 
 		respChan := make(chan goai.StreamingLLMResponse, 2)
 

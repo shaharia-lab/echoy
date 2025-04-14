@@ -1,7 +1,6 @@
 package types
 
 import (
-	"github.com/google/uuid"
 	"github.com/shaharia-lab/echoy/internal/api"
 	"github.com/shaharia-lab/goai"
 )
@@ -24,7 +23,7 @@ type StreamSettings struct {
 }
 
 type ChatRequest struct {
-	ChatUUID       uuid.UUID      `json:"chat_uuid"`
+	ChatUUID       string         `json:"chat_uuid"`
 	Question       string         `json:"question"`
 	SelectedTools  []string       `json:"selectedTools"`
 	ModelSettings  ModelSettings  `json:"modelSettings"`
@@ -33,10 +32,10 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	ChatUUID    uuid.UUID `json:"chat_uuid"`
-	Answer      string    `json:"answer"`
-	InputToken  int       `json:"input_token"`
-	OutputToken int       `json:"output_token"`
+	ChatUUID    string `json:"chat_uuid"`
+	Answer      string `json:"answer"`
+	InputToken  int    `json:"input_token"`
+	OutputToken int    `json:"output_token"`
 }
 
 type ChatHistoryList struct {

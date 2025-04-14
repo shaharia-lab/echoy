@@ -3,7 +3,6 @@ package chat
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/shaharia-lab/echoy/internal/api"
 	"github.com/shaharia-lab/echoy/internal/chat/types"
 	"github.com/shaharia-lab/echoy/internal/llm"
@@ -13,17 +12,24 @@ import (
 
 // HistoryService defines operations for chat history management
 type HistoryService interface {
+	// CreateChat initializes a new chat conversation
 	CreateChat(ctx context.Context) (*goai.ChatHistory, error)
-	AddMessage(ctx context.Context, uuid uuid.UUID, message goai.ChatHistoryMessage) error
-	GetChat(ctx context.Context, uuid uuid.UUID) (*goai.ChatHistory, error)
+
+	// AddMessage adds a new message to an existing conversation
+	AddMessage(ctx context.Context, sessionID string, message goai.ChatHistoryMessage) error
+
+	// GetChat retrieves a conversation by its ChatUUID
+	GetChat(ctx context.Context, sessionID string) (*goai.ChatHistory, error)
+
+	// ListChatHistories returns all stored conversations
 	ListChatHistories(ctx context.Context) ([]goai.ChatHistory, error)
 }
 
 // Service provides chat functionality using the LLM
 type Service interface {
-	Chat(ctx context.Context, sessionID uuid.UUID, message string) (types.ChatResponse, error)
-	ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error)
-	GetChatHistory(ctx context.Context, chatUUID uuid.UUID) (*goai.ChatHistory, error)
+	Chat(ctx context.Context, sessionID string, message string) (types.ChatResponse, error)
+	ChatStreaming(ctx context.Context, sessionID string, message string) (<-chan goai.StreamingLLMResponse, error)
+	GetChatHistory(ctx context.Context, chatUUID string) (*goai.ChatHistory, error)
 	GetListChatHistories(ctx context.Context) (types.ChatHistoryList, error)
 }
 
@@ -42,19 +48,19 @@ func NewChatService(llmService llm.Service, historyService HistoryService) *Serv
 }
 
 // Chat provides non-streaming chat functionality
-func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message string) (types.ChatResponse, error) {
+func (s *ServiceImpl) Chat(ctx context.Context, sessionID string, message string) (types.ChatResponse, error) {
 	userMessage := goai.LLMMessage{
 		Role: goai.UserRole,
 		Text: message,
 	}
 
-	if sessionID == uuid.Nil {
+	if sessionID == "" {
 		chatHistory, err := s.historyService.CreateChat(ctx)
 		if err != nil {
 			return types.ChatResponse{}, fmt.Errorf("failed to create chat session: %w", err)
 		}
 
-		sessionID = chatHistory.UUID
+		sessionID = chatHistory.SessionID
 	}
 
 	if err := s.historyService.AddMessage(ctx, sessionID, goai.ChatHistoryMessage{
@@ -89,8 +95,8 @@ func (s *ServiceImpl) Chat(ctx context.Context, sessionID uuid.UUID, message str
 }
 
 // GetChatHistory retrieves chat history for a given chat session
-func (s *ServiceImpl) GetChatHistory(ctx context.Context, chatUUID uuid.UUID) (*goai.ChatHistory, error) {
-	chatHistory, err := s.historyService.GetChat(ctx, chatUUID)
+func (s *ServiceImpl) GetChatHistory(ctx context.Context, sessionID string) (*goai.ChatHistory, error) {
+	chatHistory, err := s.historyService.GetChat(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list chat histories: %w", err)
 	}
@@ -116,18 +122,18 @@ func (s *ServiceImpl) GetListChatHistories(ctx context.Context) (types.ChatHisto
 }
 
 // ChatStreaming provides streaming chat functionality
-func (s *ServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID, message string) (<-chan goai.StreamingLLMResponse, error) {
+func (s *ServiceImpl) ChatStreaming(ctx context.Context, sessionID string, message string) (<-chan goai.StreamingLLMResponse, error) {
 	userMessage := goai.LLMMessage{
 		Role: goai.UserRole,
 		Text: message,
 	}
 
-	if sessionID == uuid.Nil {
+	if sessionID == "" {
 		chatHistory, err := s.historyService.CreateChat(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create chat session: %w", err)
 		}
-		sessionID = chatHistory.UUID
+		sessionID = chatHistory.SessionID
 	}
 
 	if err := s.historyService.AddMessage(ctx, sessionID, goai.ChatHistoryMessage{
@@ -186,7 +192,7 @@ func (s *ServiceImpl) ChatStreaming(ctx context.Context, sessionID uuid.UUID, me
 }
 
 // processStreamingResponse collects the streaming response and saves it to history
-func (s *ServiceImpl) processStreamingResponse(ctx context.Context, sessionID uuid.UUID, responseChan <-chan goai.StreamingLLMResponse) {
+func (s *ServiceImpl) processStreamingResponse(ctx context.Context, sessionID string, responseChan <-chan goai.StreamingLLMResponse) {
 	var completeResponse string
 
 	for streamingResp := range responseChan {
