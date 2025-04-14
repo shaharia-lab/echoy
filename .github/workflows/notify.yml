@@ -1,0 +1,28 @@
+name: Release Notification
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: Ilshidur/action-discord@master
+        with:
+          args: |
+            🚀 **New Release Available!** 🚀
+            
+            Repository: **https://github.com/${{ github.repository }}**
+            Version: **${{ github.event.release.tag_name }}**
+            
+            ${{ github.event.release.name }}
+            
+            ${{ github.event.release.body }}
+            
+            📥 [View Release Details](${{ github.event.release.html_url }})
+            
+            Thank you for using our project! ✨
