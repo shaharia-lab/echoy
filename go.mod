@@ -4,13 +4,13 @@ go 1.24
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/anthropics/anthropic-sdk-go v0.2.0-alpha.13
+	github.com/anthropics/anthropic-sdk-go v1.2.1
 	github.com/fatih/color v1.18.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.24
-	github.com/openai/openai-go v0.1.0-alpha.61
+	github.com/openai/openai-go v1.2.0
 	github.com/rhysd/go-github-selfupdate v1.2.3
 	github.com/shaharia-lab/goai v0.13.0
 	github.com/shaharia-lab/mcp-tools v0.0.5
